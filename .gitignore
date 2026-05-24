@@ -11,11 +11,6 @@ venv/
 # User-specific runtime config (contains local file paths)
 config.json
 
-# AppImage build artifacts / tooling (regeneratable, large binaries)
-ModelBrowser-x86_64.AppImage
-appimagetool-x86_64.AppImage
-*.AppImage
-
 # OS / editor cruft
 .DS_Store
 Thumbs.db

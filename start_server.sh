@@ -40,22 +40,8 @@ echo "======================="
 echo ""
 
 # Detect the directory where this script is located
-# This works both for regular execution and AppImage packaging
-DETECTED_SCRIPT_DIR="$(cd "$(dirname "$(readlink -f "$0")")" && pwd)"
-
-if [ -n "$APPIMAGE" ] && [ -f "$APPDIR/model_server.py" ]; then
-    # Running inside a real AppImage - use AppImage directory
-    SCRIPT_DIR="$APPDIR"
-    # For AppImage, store venv in user's home directory
-    VENV_DIR="$HOME/.local/share/ModelBrowser/venv"
-    APPIMAGE_MODE=true
-    echo "🔧 Running in AppImage mode"
-else
-    # Regular execution or AppImage env var from another app
-    SCRIPT_DIR="$DETECTED_SCRIPT_DIR"
-    VENV_DIR="$SCRIPT_DIR/venv"
-    APPIMAGE_MODE=false
-fi
+SCRIPT_DIR="$(cd "$(dirname "$(readlink -f "$0")")" && pwd)"
+VENV_DIR="$SCRIPT_DIR/venv"
 
 echo "📁 Script directory: $SCRIPT_DIR"
 cd "$SCRIPT_DIR"
@@ -67,11 +53,6 @@ if [ ! -d "$VENV_DIR" ]; then
         echo "❌ Error: Python 3 is not installed or not in PATH"
         echo "Please install Python 3 and try again."
         exit 1
-    fi
-
-    # Create parent directory if in AppImage mode
-    if [ "$APPIMAGE_MODE" = true ]; then
-        mkdir -p "$(dirname "$VENV_DIR")"
     fi
 
     python3 -m venv "$VENV_DIR"
