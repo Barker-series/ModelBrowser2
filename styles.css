@@ -1,0 +1,735 @@
+/* ═══════════════════════════════════════════
+   Luname Design System — ModelBrowser2
+   Dark-only OLED-friendly theme
+   ═══════════════════════════════════════════ */
+
+/* ── Palette & Variables ────────────────── */
+:root {
+    /* Core */
+    --background: #070707;
+    --foreground: #d1d1d1;
+    --paper: #111111;
+    --border: rgba(255,255,255,0.1);
+    --muted: rgba(255,255,255,0.4);
+    --subtle: rgba(255,255,255,0.06);
+    --radius: 0.5rem;
+
+    /* Brand — purple/indigo */
+    --brand-400: #9f92ff;
+    --brand-500: #8678f0;
+    --brand-600: #6c5ce7;
+    --brand-700: #5a49d6;
+    --brand-800: #3d2e9e;
+    --brand-900: #231c6b;
+
+    /* Gray ramp */
+    --gray-200: #e5e5e5;
+    --gray-300: #d4d4d4;
+    --gray-400: #a3a3a3;
+    --gray-500: #737373;
+    --gray-600: #525252;
+    --gray-700: #404040;
+    --gray-800: #262626;
+    --gray-900: #171717;
+    --gray-950: #0a0a0a;
+
+    /* Legacy mappings — keeps existing var() refs working */
+    --bg-primary: var(--background);
+    --bg-secondary: var(--paper);
+    --bg-tertiary: var(--gray-900);
+    --text-primary: var(--foreground);
+    --text-secondary: var(--gray-400);
+    --text-tertiary: var(--gray-500);
+    --border-color: var(--border);
+    --border-hover: var(--brand-400);
+    --shadow: rgba(0,0,0,0.4);
+    --shadow-hover: rgba(0,0,0,0.6);
+}
+
+/* ── Base ────────────────────────────────── */
+html, body {
+    height: 100vh;
+    margin: 0;
+    padding: 0;
+}
+
+body {
+    background-color: var(--background);
+    color: var(--foreground);
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+    display: flex;
+    flex-direction: column;
+}
+
+main {
+    flex: 1;
+    overflow: hidden;
+}
+
+/* ── Scrollbar ──────────────────────────── */
+::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+}
+::-webkit-scrollbar-track {
+    background: transparent;
+}
+::-webkit-scrollbar-thumb {
+    background: rgba(255,255,255,0.15);
+    border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+    background: rgba(255,255,255,0.25);
+}
+* {
+    scrollbar-width: thin;
+    scrollbar-color: rgba(255,255,255,0.15) transparent;
+}
+
+/* ── Buttons ────────────────────────────── */
+.btn-primary {
+    background-color: var(--brand-600);
+    color: #fff;
+    border: 1px solid var(--brand-600);
+    transition: background-color 0.15s, border-color 0.15s;
+}
+.btn-primary:hover {
+    background-color: var(--brand-700);
+    border-color: var(--brand-700);
+}
+
+.btn-secondary {
+    background-color: transparent;
+    color: var(--foreground);
+    border: 1px solid var(--border);
+    transition: background-color 0.15s, border-color 0.15s;
+}
+.btn-secondary:hover {
+    background-color: var(--subtle);
+    border-color: rgba(255,255,255,0.2);
+}
+
+.btn-active {
+    background-color: var(--brand-900);
+    color: var(--brand-400);
+    border: 1px solid var(--brand-400);
+}
+.btn-active:hover {
+    background-color: var(--brand-800);
+}
+
+/* ── Inputs ─────────────────────────────── */
+input, select, textarea {
+    background-color: var(--gray-900) !important;
+    color: var(--foreground) !important;
+    border-color: var(--border) !important;
+}
+input:focus, select:focus, textarea:focus {
+    border-color: var(--brand-500) !important;
+    box-shadow: 0 0 0 3px rgba(108,92,231,0.15) !important;
+    outline: none;
+}
+
+.luname-input {
+    width: 100%;
+    padding: 0.35rem 0.65rem;
+    background: var(--gray-900);
+    color: var(--foreground);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    transition: border-color 0.15s, box-shadow 0.15s;
+}
+.luname-input:focus {
+    border-color: var(--brand-500);
+    box-shadow: 0 0 0 3px rgba(108,92,231,0.15);
+    outline: none;
+}
+
+.luname-label {
+    display: block;
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: var(--gray-400);
+    margin-bottom: 0.5rem;
+}
+
+/* Inside a flex label-row (label + icon button), let the wrapper's
+   own mb-2 own the spacing — the label shouldn't add extra margin. */
+.flex > .luname-label {
+    margin-bottom: 0;
+}
+
+/* Bare copy-icon buttons next to field labels */
+#copyActivationTextBtn,
+#copyPostPromptBtn,
+#copyNegativeTextBtn {
+    cursor: pointer;
+}
+#copyActivationTextBtn:hover,
+#copyPostPromptBtn:hover,
+#copyNegativeTextBtn:hover {
+    color: var(--foreground) !important;
+}
+
+/* ── Navbar ─────────────────────────────── */
+.navbar {
+    background: #1f1f23;
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border-bottom: 1px solid var(--border);
+    position: sticky;
+    top: 0;
+    z-index: 40;
+    height: 52px;
+    flex-shrink: 0;
+}
+
+.navbar-inner {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    height: 100%;
+    padding: 0 1rem;
+}
+
+.navbar-brand {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    flex-shrink: 0;
+}
+
+.navbar-logo {
+    font-size: 1.25rem;
+    color: var(--brand-400);
+}
+
+.navbar-title {
+    font-size: 0.95rem;
+    font-weight: 600;
+    letter-spacing: 0.01em;
+    color: var(--foreground);
+    margin: 0;
+    white-space: nowrap;
+}
+
+/* Centered command-palette-style search */
+.navbar-search {
+    position: relative;
+    flex: 1;
+    max-width: 560px;
+    margin: 0 auto;
+    display: flex;
+    align-items: center;
+    background: #2a2a30;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.25);
+    transition: border-color 0.18s ease, box-shadow 0.18s ease;
+}
+
+.navbar-search:focus-within {
+    border-color: var(--brand-500);
+    box-shadow: 0 1px 3px rgba(0,0,0,0.25),
+                0 0 0 3px rgba(108,92,231,0.18);
+}
+
+.navbar-search input {
+    flex: 1;
+    width: 100%;
+    height: 34px;
+    padding: 0 2.25rem 0 2.25rem;
+    background: transparent !important;
+    border: none !important;
+    color: var(--foreground) !important;
+    font-size: 0.9rem;
+    outline: none;
+    box-shadow: none !important;
+}
+
+.navbar-search input::placeholder {
+    color: var(--gray-500);
+}
+
+.navbar-search-icon {
+    position: absolute;
+    left: 0.75rem;
+    color: var(--gray-500);
+    font-size: 0.85rem;
+    pointer-events: none;
+}
+
+.navbar-search-clear {
+    position: absolute;
+    right: 0.4rem;
+    width: 24px;
+    height: 24px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border: none;
+    background: transparent;
+    color: var(--gray-500);
+    border-radius: 50%;
+    cursor: pointer;
+    transition: background-color 0.15s ease, color 0.15s ease;
+}
+
+.navbar-search-clear:hover {
+    background: rgba(255,255,255,0.08);
+    color: var(--foreground);
+}
+
+/* Round icon buttons (settings, etc.) */
+.navbar-actions {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    flex-shrink: 0;
+}
+
+.navbar-icon-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 34px;
+    height: 34px;
+    padding: 0;
+    border-radius: 50%;
+    background: #2a2a30;
+    border: 1px solid var(--border);
+    color: var(--gray-300);
+    cursor: pointer;
+    transition: background-color 0.18s ease,
+                color 0.18s ease,
+                transform 0.18s ease,
+                border-color 0.18s ease;
+}
+
+.navbar-icon-btn:hover {
+    background: var(--brand-600);
+    border-color: var(--brand-500);
+    color: #fff;
+    transform: translateY(-1px);
+}
+
+.navbar-icon-btn:active {
+    transform: translateY(0);
+}
+
+.navbar-icon-btn i {
+    pointer-events: none;
+    font-size: 0.9rem;
+}
+
+/* ── Sidebar title (just an icon) ───────── */
+.sidebar-title {
+    display: flex;
+    align-items: center;
+    justify-content: flex-start;
+    padding: 14px 16px 10px;
+    color: var(--brand-400);
+    font-size: 1.6rem;
+}
+
+/* ── Tree Sidebar ───────────────────────── */
+.tree-item {
+    cursor: pointer;
+    user-select: none;
+    padding: 6px 12px 6px 22px;
+    border-left: 2px solid transparent;
+    border-radius: 0 4px 4px 0;
+    font-size: 13px;
+    line-height: 1.35;
+    color: var(--gray-300);
+    transition: background-color 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+}
+.tree-item:hover {
+    background-color: rgba(255,255,255,0.04);
+    color: var(--foreground);
+}
+.tree-item.selected {
+    background-color: rgba(159,146,255,0.12);
+    color: var(--brand-400);
+    border-left-color: var(--brand-400);
+    font-weight: 500;
+}
+.tree-root {
+    font-weight: 600;
+    letter-spacing: 0.02em;
+    text-transform: uppercase;
+    font-size: 11px;
+    color: var(--gray-400);
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 6px;
+    padding: 8px 12px;
+    border-left: none;
+    border-radius: 0;
+}
+.tree-folder {
+    font-weight: 500;
+}
+.tree-indent {
+    width: 16px;
+    display: inline-block;
+}
+
+/* ── Gallery Grid ───────────────────────── */
+.gallery-grid {
+    display: grid;
+    gap: 14px;
+    row-gap: 20px;
+    padding: 18px 20px;
+    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+    justify-items: center;
+}
+
+@media (max-width: 640px) {
+    .gallery-grid {
+        grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+        gap: 10px;
+        padding: 14px;
+    }
+}
+@media (min-width: 641px) and (max-width: 1024px) {
+    .gallery-grid {
+        grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    }
+}
+@media (min-width: 1600px) {
+    .gallery-grid {
+        grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+    }
+}
+
+/* ── Gallery Card ───────────────────────── */
+.gallery-card {
+    width: 100%;
+    max-width: 260px;
+    min-width: 180px;
+    aspect-ratio: 896 / 1152;
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    background-color: var(--gray-900);
+    overflow: hidden;
+    cursor: pointer;
+    transition: transform 0.18s cubic-bezier(0.4, 0, 0.2, 1),
+                border-color 0.2s ease,
+                box-shadow 0.25s ease;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.35);
+    display: flex;
+    flex-direction: column;
+    position: relative;
+}
+.gallery-card:hover {
+    transform: translateY(-3px);
+    border-color: rgba(159,146,255,0.45);
+    box-shadow: 0 8px 24px rgba(0,0,0,0.55), 0 0 0 1px rgba(159,146,255,0.1);
+}
+
+/* ── Gallery Image ──────────────────────── */
+.gallery-image {
+    flex: 1;
+    width: 100%;
+    height: 100%;
+    background-color: var(--gray-900);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+    position: relative;
+}
+.gallery-image img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    object-position: center top;
+    transition: transform 0.45s ease;
+    display: block;
+}
+.gallery-card:hover .gallery-image img {
+    transform: scale(1.04);
+}
+
+/* ── No Preview placeholder ─────────────── */
+.no-preview {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    color: var(--gray-600);
+    font-size: 0.8rem;
+    height: 100%;
+    width: 100%;
+}
+.no-preview i {
+    font-size: 2.5rem;
+    opacity: 0.4;
+}
+
+/* ── Card Header (floating icons, no bar) ── */
+.gallery-card-header {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    z-index: 2;
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 6px;
+    padding: 8px;
+    color: #fff;
+    background: none;
+    pointer-events: none;
+}
+.gallery-card-header > * {
+    pointer-events: auto;
+}
+
+.gallery-folder-badge {
+    display: inline-block;
+    max-width: 60%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    background: rgba(255,255,255,0.12);
+    backdrop-filter: blur(4px);
+    -webkit-backdrop-filter: blur(4px);
+    color: #fff;
+    font-size: 10.5px;
+    font-weight: 500;
+    letter-spacing: 0.01em;
+    padding: 3px 8px;
+    border-radius: 4px;
+    text-shadow: 0 1px 2px rgba(0,0,0,0.5);
+}
+
+.gallery-date-badge {
+    background: rgba(0,0,0,0.45);
+    backdrop-filter: blur(4px);
+    -webkit-backdrop-filter: blur(4px);
+    color: #fff;
+    font-size: 10px;
+    padding: 3px 7px;
+    border-radius: 4px;
+    text-shadow: 0 1px 2px rgba(0,0,0,0.5);
+}
+
+/* ── Card Footer (bottom overlay strip — frosted glass) ── */
+.gallery-card-footer {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    z-index: 2;
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 8px;
+    padding: 10px 10px 8px;
+    color: #fff;
+    background: linear-gradient(to top,
+                                rgba(0,0,0,0.85) 0%,
+                                rgba(0,0,0,0.55) 55%,
+                                transparent 100%);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+}
+
+.gallery-card-title {
+    flex: 1;
+    min-width: 0;
+    font-size: 13px;
+    font-weight: 600;
+    line-height: 1.3;
+    color: #fff;
+    text-shadow: 0 1px 3px rgba(0,0,0,0.7);
+    word-break: break-word;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+    letter-spacing: 0.005em;
+}
+
+/* ── Card icon buttons ──────────────────── */
+.gallery-card-actions {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    flex-shrink: 0;
+}
+
+.gallery-icon-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 26px;
+    height: 26px;
+    padding: 0;
+    border: none;
+    border-radius: 6px;
+    background: rgba(255,255,255,0.08);
+    color: #fff;
+    cursor: pointer;
+    font-size: 12px;
+    line-height: 1;
+    transition: background-color 0.15s ease,
+                transform 0.15s ease,
+                color 0.15s ease;
+    -webkit-tap-highlight-color: transparent;
+}
+.gallery-icon-btn:hover {
+    background: rgba(159,146,255,0.85);
+    color: #fff;
+    transform: scale(1.08);
+}
+.gallery-icon-btn:active {
+    transform: scale(0.96);
+}
+.gallery-icon-btn i {
+    pointer-events: none;
+}
+
+/* ── File Card (legacy) ─────────────────── */
+.file-card {
+    transition: all 0.3s ease;
+    border: 2px solid transparent;
+    background-color: var(--paper) !important;
+}
+.file-card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 8px 25px var(--shadow-hover);
+    border-color: var(--brand-400);
+}
+
+.thumbnail {
+    width: 100%;
+    height: 200px;
+    object-fit: cover;
+    object-position: center top;
+    background: linear-gradient(135deg, var(--brand-600) 0%, var(--brand-800) 100%);
+}
+.metadata-tag {
+    background: linear-gradient(135deg, var(--brand-600) 0%, var(--brand-800) 100%);
+}
+
+/* ── Loading Spinner ────────────────────── */
+.loading-spinner {
+    border: 3px solid var(--border);
+    border-top: 3px solid var(--brand-500);
+    border-radius: 50%;
+    width: 40px;
+    height: 40px;
+    animation: spin 1s linear infinite;
+}
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+.grid-item {
+    break-inside: avoid;
+    margin-bottom: 1rem;
+}
+
+/* ── Settings Panel ─────────────────────── */
+.settings-panel {
+    background-color: var(--paper);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 16px;
+    margin-bottom: 16px;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.4);
+}
+.path-input {
+    background-color: var(--gray-900);
+    color: var(--foreground);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 8px 12px;
+    width: 100%;
+}
+.path-input:focus {
+    outline: none;
+    border-color: var(--brand-500);
+    box-shadow: 0 0 0 3px rgba(108,92,231,0.15);
+}
+
+/* ── Modal ──────────────────────────────── */
+#modelInfoModal {
+    transition: opacity 0.3s ease;
+}
+#modelInfoModal.show {
+    opacity: 1;
+}
+#modelInfoModal.hide {
+    opacity: 0;
+}
+#modelInfoModal > div {
+    transform: scale(0.95);
+    transition: transform 0.3s ease;
+}
+#modelInfoModal.show > div {
+    transform: scale(1);
+}
+#modelInfoModal.hide > div {
+    transform: scale(0.95);
+}
+
+@media (max-height: 600px) {
+    #modelInfoModal {
+        align-items: flex-start;
+        padding-top: 2rem;
+    }
+    #modelInfoModal > div {
+        max-height: calc(100vh - 2rem);
+        margin-top: 0;
+        margin-bottom: 0;
+    }
+}
+@media (max-width: 640px) {
+    #modelInfoModal {
+        padding: 1rem;
+    }
+    #modelInfoModal > div {
+        max-height: calc(100vh - 2rem);
+        margin: 0;
+    }
+}
+
+.modal-input:focus {
+    outline: none;
+    border-color: var(--brand-500);
+    box-shadow: 0 0 0 3px rgba(108,92,231,0.15);
+}
+
+/* ── Prompt-field colour coding ─────────── */
+/* Green = positive prompts (activation / post) */
+#modelActivationText,
+#modelPostPrompt {
+    border-color: rgba(34,197,94,0.55) !important;
+    box-shadow: inset 0 0 0 1px rgba(34,197,94,0.15);
+}
+#modelActivationText:focus,
+#modelPostPrompt:focus {
+    border-color: rgba(34,197,94,0.9) !important;
+    box-shadow: 0 0 0 3px rgba(34,197,94,0.18) !important;
+}
+
+/* Red = negative prompts */
+#modelNegativeText {
+    border-color: rgba(239,68,68,0.55) !important;
+    box-shadow: inset 0 0 0 1px rgba(239,68,68,0.15);
+}
+#modelNegativeText:focus {
+    border-color: rgba(239,68,68,0.9) !important;
+    box-shadow: 0 0 0 3px rgba(239,68,68,0.18) !important;
+}
+
+#modalThumbnail, #modalModelName, #modalModelPath,
+#modelInfoForm input, #modelInfoForm textarea {
+    transition: all 0.2s ease;
+}

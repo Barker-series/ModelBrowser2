@@ -1,0 +1,2213 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SafeTensors Local File Browser</title>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css">
+    <!-- Favicon using Font Awesome cube icon -->
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'><path fill='%239f92ff' d='M234.5 5.7c13.9-5 29.1-5 43.1 0l192 68.6C495 83.4 512 107.5 512 134.6V377.4c0 27-17 51.2-42.5 60.3l-192 68.6c-13.9 5-29.1 5-43.1 0l-192-68.6C17 428.6 0 404.5 0 377.4V134.6C0 107.5 17 83.4 42.5 74.3l192-68.6zM256 65.1L64 132.3v247.4l192 67.4 192-67.4V132.3L256 65.1zm-32 149.6v94.8l160-48v-94.8L224 214.7zM288 359.9l160-48v-94.8l-160 48v94.8z'/></svg>">
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body class="min-h-screen">
+    <!-- Header -->
+    <header class="navbar">
+        <div class="navbar-inner">
+            <div class="navbar-brand">
+                <i class="fas fa-cube navbar-logo"></i>
+                <h1 class="navbar-title">SafeTensors Browser</h1>
+            </div>
+            <div class="navbar-search">
+                <i class="fas fa-search navbar-search-icon"></i>
+                <input type="text" id="searchInput" placeholder="Search models by name or description...">
+                <button id="clearSearch" class="navbar-search-clear hidden" aria-label="Clear search">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="navbar-actions">
+                <button id="settingsToggle" class="navbar-icon-btn" aria-label="Settings">
+                    <i class="fas fa-cog"></i>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="flex h-full">
+        <!-- Settings Panel -->
+        <div id="settingsPanel" class="settings-panel hidden absolute top-16 left-4 right-4 z-50 mb-8">
+            <h3 class="text-lg font-semibold mb-4" style="color: var(--foreground)">
+                <i class="fas fa-cog mr-2"></i>
+                Settings
+            </h3>
+            <div class="space-y-4">
+                <div>
+                    <label class="luname-label">Model Root Directory</label>
+                    <input type="text" id="modelRoot" class="path-input" placeholder="/path/to/your/models" value="">
+                </div>
+                <div>
+                    <label class="luname-label">Folder Whitelist (comma-separated)</label>
+                    <input type="text" id="folderWhitelist" class="path-input" placeholder="Stable-diffusion,Lora" value="Stable-diffusion,Lora">
+                </div>
+                <div class="flex justify-end space-x-4">
+                    <button id="saveSettings" class="btn-primary px-4 py-2 rounded-lg">
+                        Save Settings
+                    </button>
+                    <button id="loadFiles" class="btn-primary px-4 py-2 rounded-lg" style="background-color: #059669; border-color: #059669;">
+                        <i class="fas fa-refresh mr-2"></i>
+                        Load Files
+                    </button>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Left Sidebar - Tree View -->
+        <div id="treePanel" class="w-60 flex flex-col" style="background: var(--paper); border-right: 1px solid var(--border)">
+            <div class="sidebar-title">
+                <i class="fas fa-folder-tree"></i>
+            </div>
+            <div id="treeContainer" class="flex-1 overflow-y-auto p-2">
+                <!-- Tree structure will be populated here -->
+            </div>
+        </div>
+        
+        <!-- Right Content Area -->
+        <div class="flex-1 flex flex-col">
+            <!-- Gallery Controls -->
+            <div class="px-5 pt-4 pb-2">
+                <div class="flex items-center justify-between">
+                    <h2 id="galleryTitle" class="text-lg font-semibold" style="color: var(--foreground)">Select a Folder</h2>
+                    <div class="flex items-center space-x-4">
+                        <span class="text-sm" style="color: var(--muted)">Sort by:</span>
+                        <button id="sortName" class="btn-secondary px-3 py-1 rounded text-sm">A-Z</button>
+                        <button id="sortDate" class="btn-secondary px-3 py-1 rounded text-sm">Date</button>
+                        <button id="refreshBtn" class="btn-secondary px-3 py-1 rounded text-sm">
+                            <i class="fas fa-refresh mr-1"></i>Refresh
+                        </button>
+                        <button id="cacheBtn" class="btn-secondary px-3 py-1 rounded text-sm">
+                            Cache Thumbnails
+                        </button>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Gallery Area -->
+            <div id="galleryArea" class="flex-1 overflow-y-auto">
+                <div id="galleryGrid" class="gallery-grid">
+                    <!-- Model cards will be populated here -->
+                </div>
+                
+                <!-- Welcome Message -->
+                <div id="welcomeMessage" class="text-center py-16">
+                    <i class="fas fa-folder-tree text-6xl mb-4" style="color: var(--gray-600)"></i>
+                    <h3 class="text-xl font-semibold mb-2" style="color: var(--gray-400)">Configure your model directory</h3>
+                    <p style="color: var(--gray-500)">Click the settings button above to set your model root directory</p>
+                </div>
+            </div>
+        </div>
+    </main>
+    
+    <!-- Status Bar -->
+    <div id="statusBar" class="px-4 py-2 text-sm" style="background: var(--paper); border-top: 1px solid var(--border); color: var(--muted)">
+        Ready
+    </div>
+
+    <!-- Model Info Modal -->
+    <div id="modelInfoModal" class="fixed inset-0 bg-black bg-opacity-50 hidden z-50 flex items-center justify-center p-4" style="backdrop-filter: blur(4px)">
+        <div class="rounded-xl shadow-2xl flex flex-col" style="background: var(--paper); width: 90vw; max-width: 90vw; height: 90vh; max-height: 90vh; border: 1px solid var(--border)">
+            <!-- Modal Header -->
+            <div class="flex items-center justify-between p-6 flex-shrink-0" style="border-bottom: 1px solid var(--border)">
+                <div class="flex items-center space-x-4">
+                    <div>
+                        <h2 id="modalModelName" class="text-xl font-bold" style="color: var(--foreground)">Model Name</h2>
+                        <p id="modalModelPath" class="text-sm" style="color: var(--gray-500)">Model Path</p>
+                    </div>
+                </div>
+                <div class="flex items-center space-x-3">
+                    <div id="modalStatus" class="text-sm mr-4" style="color: var(--gray-500)"></div>
+                    <button id="cancelModalBtn" class="btn-secondary px-4 py-2 rounded-lg transition-colors">
+                        Cancel
+                    </button>
+                    <button id="saveModalBtn" class="btn-primary px-4 py-2 rounded-lg transition-colors">
+                        Save Changes
+                    </button>
+                    <button id="closeModalBtn" class="transition-colors ml-2" style="color: var(--gray-500)" onmouseover="this.style.color='var(--foreground)'" onmouseout="this.style.color='var(--gray-500)'">
+                        <i class="fas fa-times text-xl"></i>
+                    </button>
+                </div>
+            </div>
+            
+            <!-- Modal Body: image (left) | flex column holding form+settings grid + notes -->
+            <div class="p-6 overflow-y-auto flex-1 min-h-0" style="display: flex; gap: 1.5rem; align-items: flex-start; overflow-x: hidden;">
+                <!-- Left: Image -->
+                <div class="flex justify-center items-start" style="width: 50%; flex-shrink: 0; min-width: 0; min-height: 300px; max-height: calc(90vh - 8rem); overflow: hidden;">
+                    <div id="modalThumbnail" class="w-full h-full rounded-lg overflow-hidden relative cursor-pointer transition-colors border-2 border-dashed border-transparent" style="min-width: 0;">
+                        <img id="modalThumbnailImg" style="display: none; width: 100%; height: 100%; object-fit: contain; object-position: top;">
+                        <div id="modalThumbnailPlaceholder" class="w-full h-full flex flex-col items-center justify-center" style="color: var(--gray-500)"
+                            <i class="fas fa-image text-4xl mb-2"></i>
+                            <p class="text-sm text-center px-4">
+                                <span class="block font-medium">Drag & drop image here</span>
+                                <span class="block text-xs mt-1">or click to browse</span>
+                            </p>
+                        </div>
+                        <div id="modalThumbnailOverlay" class="absolute inset-0 bg-gray-900 bg-opacity-75 flex flex-col items-center justify-center text-white hidden">
+                            <i class="fas fa-cloud-upload-alt text-4xl mb-2"></i>
+                            <p class="text-sm font-medium">Replace thumbnail</p>
+                        </div>
+                        <div id="modalThumbnailDragOver" class="absolute inset-0 border-2 border-dashed rounded-lg flex flex-col items-center justify-center hidden" style="background: rgba(108,92,231,0.15); border-color: var(--brand-500); color: var(--brand-400)"
+                            <i class="fas fa-download text-3xl mb-2"></i>
+                            <p class="text-sm font-medium">Drop image to replace</p>
+                        </div>
+                    </div>
+                    <input type="file" id="thumbnailFileInput" accept="image/*" style="display: none;">
+                </div>
+
+                <!-- Right side: form + settings grid (top) and notes (below) -->
+                <div style="flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 0.5rem;">
+                    <!-- Top: form + settings 2-col grid -->
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; align-items: start;">
+
+                        <!-- Middle Column - Main Form Fields -->
+                        <div>
+                <form id="modelInfoForm" class="space-y-2">
+                    <!-- Description -->
+                    <div>
+                        <div class="flex items-center justify-between mb-1">
+                            <label for="modelDescription" class="luname-label">
+                                Description
+                            </label>
+                            <div class="flex space-x-2">
+                                <button id="visitLinkBtn" type="button" class="hidden px-2 py-1 text-xs rounded-md transition-colors" style="background: var(--brand-900); color: var(--brand-400)" title="Open source URL in new tab" aria-label="Visit link">
+                                    <i class="fas fa-globe"></i>
+                                </button>
+                                <button id="openFileBtn" type="button" class="text-xs leading-none transition-colors bg-transparent border-0 p-0" style="color: var(--gray-400)" title="Open in file manager" aria-label="Open file">
+                                    <i class="fas fa-folder-open"></i>
+                                </button>
+                            </div>
+                        </div>
+                        <textarea id="modelDescription" name="description" rows="3" 
+                                  class="luname-input"
+                                  placeholder=""></textarea>
+                    </div>
+                    
+                    <!-- SD Version -->
+                    <div>
+                        <label for="modelSdVersion" class="luname-label mb-1">
+                            Version
+                        </label>
+                        <input type="text" id="modelSdVersion" name="sd_version" 
+                               class="luname-input"
+                               placeholder="">
+                    </div>
+                    
+                    <!-- Activation Text -->
+                    <div>
+                        <div class="flex items-center justify-between mb-1">
+                            <label for="modelActivationText" class="luname-label">
+                                Activation Text / Trigger Words
+                            </label>
+                            <button id="copyActivationTextBtn" type="button" class="text-xs leading-none transition-colors bg-transparent border-0 p-0" style="color: var(--gray-400)" title="Copy to clipboard" aria-label="Copy activation text">
+                                <i class="fas fa-copy"></i>
+                            </button>
+                        </div>
+                        <input type="text" id="modelActivationText" name="activation_text"
+                               class="luname-input"
+                               placeholder="">
+                    </div>
+
+                    <!-- Post Prompt -->
+                    <div>
+                        <div class="flex items-center justify-between mb-1">
+                            <label for="modelPostPrompt" class="luname-label">
+                                Post Prompt
+                            </label>
+                            <button id="copyPostPromptBtn" type="button" class="text-xs leading-none transition-colors bg-transparent border-0 p-0" style="color: var(--gray-400)" title="Copy to clipboard" aria-label="Copy post prompt">
+                                <i class="fas fa-copy"></i>
+                            </button>
+                        </div>
+                        <input type="text" id="modelPostPrompt" name="post_prompt"
+                               class="luname-input"
+                               placeholder="">
+                    </div>
+
+                    <!-- Preferred Weight -->
+                    <div>
+                        <label for="modelWeight" class="luname-label mb-1">
+                            Preferred Weight
+                        </label>
+                        <input type="number" id="modelWeight" name="preferred_weight" step="0.1" min="0" max="2" 
+                               class="luname-input"
+                               placeholder="">
+                    </div>
+                    
+                    <!-- Negative Text -->
+                    <div>
+                        <div class="flex items-center justify-between mb-1">
+                            <label for="modelNegativeText" class="luname-label">
+                                Negative Prompts
+                            </label>
+                            <button id="copyNegativeTextBtn" type="button" class="text-xs leading-none transition-colors bg-transparent border-0 p-0" style="color: var(--gray-400)" title="Copy to clipboard" aria-label="Copy negative text">
+                                <i class="fas fa-copy"></i>
+                            </button>
+                        </div>
+                        <textarea id="modelNegativeText" name="negative_text" rows="2"
+                                  class="luname-input"
+                                  placeholder=""></textarea>
+                    </div>
+                </form>
+                </div>
+                <!-- End Middle Column -->
+
+                        <!-- Right Column - Checkpoint Settings -->
+                        <div>
+                            <div class="space-y-2">
+                        <h3 class="text-sm font-semibold mb-2 pb-1" style="color: var(--gray-400); border-bottom: 1px solid var(--border)">
+                            <i class="fas fa-sliders-h mr-2"></i>Checkpoint Settings
+                        </h3>
+
+                        <!-- Checkpoint -->
+                        <div>
+                            <label for="modelCheckpoint" class="luname-label mb-1">
+                                Checkpoint
+                            </label>
+                            <input type="text" id="modelCheckpoint" name="checkpoint"
+                                   class="luname-input">
+                        </div>
+
+                        <!-- VAE -->
+                        <div>
+                            <label for="modelVae" class="luname-label mb-1">
+                                VAE
+                            </label>
+                            <input type="text" id="modelVae" name="vae"
+                                   class="luname-input">
+                        </div>
+
+                        <!-- Steps -->
+                        <div>
+                            <label for="modelSteps" class="luname-label mb-1">
+                                Steps
+                            </label>
+                            <input type="number" id="modelSteps" name="steps" min="1" max="150"
+                                   class="luname-input">
+                        </div>
+
+                        <!-- CFG Scale -->
+                        <div>
+                            <label for="modelCfgScale" class="luname-label mb-1">
+                                CFG Scale
+                            </label>
+                            <input type="number" id="modelCfgScale" name="cfg_scale" step="0.5" min="1" max="30"
+                                   class="luname-input">
+                        </div>
+
+                        <!-- Sampler Name -->
+                        <div>
+                            <label for="modelSamplerName" class="luname-label mb-1">
+                                Sampler
+                            </label>
+                            <input type="text" id="modelSamplerName" name="sampler_name"
+                                   class="luname-input">
+                        </div>
+
+                        <!-- Scheduler -->
+                        <div>
+                            <label for="modelScheduler" class="luname-label mb-1">
+                                Scheduler
+                            </label>
+                            <input type="text" id="modelScheduler" name="scheduler"
+                                   class="luname-input">
+                        </div>
+
+                        <!-- Width x Height -->
+                        <div>
+                            <label class="luname-label mb-1">
+                                Resolution (Width × Height)
+                            </label>
+                            <div class="flex gap-2 items-center">
+                                <input type="number" id="modelWidth" name="width" min="64" max="2048" step="64"
+                                       class="luname-input">
+                                <span style="color: var(--gray-500)">×</span>
+                                <input type="number" id="modelHeight" name="height" min="64" max="2048" step="64"
+                                       class="luname-input">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                        <!-- End Right Column -->
+
+                    </div>
+                    <!-- End form + settings grid -->
+
+                    <!-- Notes (flushed under form+settings) -->
+                    <div>
+                        <label for="modelNotes" class="luname-label mb-1">
+                            <i class="fas fa-sticky-note mr-2"></i>Notes
+                        </label>
+                        <textarea id="modelNotes" name="notes" rows="13"
+                                  class="luname-input resize-y"
+                                  placeholder=""></textarea>
+                    </div>
+                </div>
+                <!-- End right side -->
+            </div>
+            <!-- End Modal Body -->
+        </div>
+    </div>
+
+    <script>
+        class ModelGalleryBrowser {
+            constructor() {
+                this.modelTree = {};
+                this.currentModels = [];
+                this.selectedPath = [];
+                this.currentModel = null;
+                this.isEditing = false;
+                this.isDirty = false;
+                this.sortMode = 'name'; // 'name' or 'date'
+                
+                // Model file extensions from gallery.py
+                this.modelExtensions = ['.ckpt', '.safetensors', '.pt', '.pth', '.bin'];
+                
+                // Settings - will be loaded asynchronously
+                this.modelRoot = '';
+                this.folderWhitelist = ['Stable-diffusion', 'Lora'];
+                this.allModels = []; // Store all models for search
+                this.filteredModels = []; // Store filtered results
+                
+                this.init();
+            }
+
+            async init() {
+                this.setupEventListeners();
+                await this.loadSettings(); // Load settings from server first
+                this.loadSettingsUI();
+                this.updateStatus('Ready');
+                
+                // Load models if we have a root directory
+                if (this.modelRoot) {
+                    this.loadModels();
+                }
+            }
+
+            setupEventListeners() {
+                // Settings
+                document.getElementById('settingsToggle').addEventListener('click', () => this.toggleSettings());
+                document.getElementById('saveSettings').addEventListener('click', () => this.saveSettings());
+                document.getElementById('loadFiles').addEventListener('click', () => this.loadModels());
+                
+                // Gallery controls
+                document.getElementById('sortName').addEventListener('click', () => this.changeSortMode('name'));
+                document.getElementById('sortDate').addEventListener('click', () => this.changeSortMode('date'));
+                document.getElementById('refreshBtn').addEventListener('click', () => this.refreshModels());
+                document.getElementById('cacheBtn').addEventListener('click', () => this.cacheThumbnails());
+                
+                // Search functionality
+                const searchInput = document.getElementById('searchInput');
+                const clearSearch = document.getElementById('clearSearch');
+                
+                searchInput.addEventListener('input', (e) => this.handleSearch(e.target.value));
+                clearSearch.addEventListener('click', () => this.clearSearch());
+                
+                // Model Info Modal
+                document.getElementById('closeModalBtn').addEventListener('click', () => this.hideModelModal());
+                document.getElementById('cancelModalBtn').addEventListener('click', () => this.hideModelModal());
+                document.getElementById('saveModalBtn').addEventListener('click', () => this.saveModelInfo());
+                
+                // Modal overlay click to close
+                document.getElementById('modelInfoModal').addEventListener('click', (e) => {
+                    if (e.target.id === 'modelInfoModal') this.hideModelModal();
+                });
+                
+                // URL detection in description field
+                document.getElementById('modelDescription').addEventListener('input', () => this.updateVisitLinkButton());
+                
+                // Open file button
+                document.getElementById('openFileBtn').addEventListener('click', () => this.openFileExplorer());
+                
+                // Copy activation text button
+                document.getElementById('copyActivationTextBtn').addEventListener('click', () => this.copyActivationText());
+
+                // Copy post prompt button
+                document.getElementById('copyPostPromptBtn').addEventListener('click', () => this.copyPostPrompt());
+
+                // Copy negative text button
+                document.getElementById('copyNegativeTextBtn').addEventListener('click', () => this.copyNegativeText());
+                
+                // Mark the modal as dirty whenever any of its inputs change
+                document.getElementById('modelInfoModal').addEventListener('input', () => {
+                    this.isDirty = true;
+                });
+
+                // Keyboard shortcuts
+                document.addEventListener('keydown', (e) => {
+                    if (e.key === 'F5') {
+                        e.preventDefault();
+                        this.refreshModels();
+                    }
+                    if (e.key === 'Escape') {
+                        if (document.getElementById('modelInfoModal').classList.contains('show')) {
+                            this.hideModelModal();
+                        } else {
+                            this.clearSearch();
+                        }
+                    }
+                    if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') {
+                        const modalOpen = document.getElementById('modelInfoModal').classList.contains('show');
+                        if (!modalOpen) return;
+                        // Don't hijack arrows while user is editing a field
+                        const t = e.target;
+                        if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.tagName === 'SELECT' || t.isContentEditable)) {
+                            return;
+                        }
+                        e.preventDefault();
+                        this.navigateModal(e.key === 'ArrowRight' ? 1 : -1);
+                    }
+                });
+            }
+
+            async navigateModal(direction) {
+                if (this.isDirty) {
+                    const ok = window.confirm('You have unsaved changes. Discard and continue?');
+                    if (!ok) return;
+                    this.isDirty = false;
+                }
+                const models = (this.filteredModels && this.filteredModels.length > 0)
+                    ? this.filteredModels
+                    : this.currentModels;
+                if (!models || models.length === 0 || !this.currentModel) return;
+                let idx = models.findIndex(m => m.path === this.currentModel.path);
+                if (idx === -1) idx = 0;
+                const next = models[(idx + direction + models.length) % models.length];
+                await this.showModelInfo(next);
+            }
+
+            async loadSettings() {
+                try {
+                    // Try to load settings from server first
+                    console.log('Loading settings from server...');
+                    const response = await fetch('/api/config');
+                    const serverConfig = await response.json();
+                    
+                    if (serverConfig.modelRoot || serverConfig.folderWhitelist) {
+                        console.log('Loaded settings from server:', serverConfig);
+                        this.modelRoot = serverConfig.modelRoot || '';
+                        this.folderWhitelist = serverConfig.folderWhitelist || ['Stable-diffusion', 'Lora'];
+                        
+                        // Also save to localStorage for offline use
+                        const settings = {
+                            modelRoot: this.modelRoot,
+                            folderWhitelist: this.folderWhitelist
+                        };
+                        localStorage.setItem('model-gallery-settings', JSON.stringify(settings));
+                        return settings;
+                    }
+                } catch (error) {
+                    console.log('Failed to load settings from server, using localStorage:', error);
+                }
+                
+                // Fallback to localStorage
+                const saved = localStorage.getItem('model-gallery-settings');
+                const localSettings = saved ? JSON.parse(saved) : { modelRoot: '', folderWhitelist: ['Stable-diffusion', 'Lora'] };
+                
+                this.modelRoot = localSettings.modelRoot || '';
+                this.folderWhitelist = localSettings.folderWhitelist || ['Stable-diffusion', 'Lora'];
+                
+                console.log('Loaded settings from localStorage:', localSettings);
+                return localSettings;
+            }
+            
+            loadSettingsUI() {
+                document.getElementById('modelRoot').value = this.modelRoot;
+                document.getElementById('folderWhitelist').value = this.folderWhitelist.join(',');
+            }
+            
+            async saveSettings() {
+                this.modelRoot = document.getElementById('modelRoot').value.trim();
+                this.folderWhitelist = document.getElementById('folderWhitelist').value
+                    .split(',')
+                    .map(s => s.trim())
+                    .filter(s => s.length > 0);
+                
+                const settings = {
+                    modelRoot: this.modelRoot,
+                    folderWhitelist: this.folderWhitelist
+                };
+                
+                // Save to localStorage (for fallback)
+                localStorage.setItem('model-gallery-settings', JSON.stringify(settings));
+                
+                try {
+                    // Send settings to server
+                    this.updateStatus('Saving settings to server...');
+                    
+                    const response = await fetch('/api/config', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify(settings)
+                    });
+                    
+                    const result = await response.json();
+                    
+                    if (result.success) {
+                        this.updateStatus('Settings saved successfully! The server configuration has been updated.');
+                        console.log('Server config updated:', result.config);
+                    } else {
+                        this.updateStatus(`Error saving settings: ${result.error}`);
+                        console.error('Failed to save settings:', result.error);
+                    }
+                } catch (error) {
+                    console.error('Network error saving settings:', error);
+                    this.updateStatus('Settings saved locally, but failed to update server. Using local server mode.');
+                }
+            }
+            
+            toggleSettings() {
+                const panel = document.getElementById('settingsPanel');
+                panel.classList.toggle('hidden');
+            }
+            
+            updateStatus(message) {
+                document.getElementById('statusBar').textContent = message;
+            }
+            
+            async loadModels() {
+                this.updateStatus('Loading models from server...');
+                
+                try {
+                    // Use server API to scan models
+                    const response = await fetch('/api/scan');
+                    const result = await response.json();
+                    
+                    if (result.success) {
+                        this.modelTree = result.data;
+                        
+                        if (Object.keys(this.modelTree).length > 0) {
+                            this.populateTree(this.modelTree);
+                            this.hideWelcomeMessage();
+                            
+                            const totalModels = this.countTotalModels(this.modelTree);
+                            this.updateStatus(`Loaded ${totalModels} models from ${result.root}`);
+                        } else {
+                            this.updateStatus('No models found. Check server configuration.');
+                        }
+                    } else {
+                        this.updateStatus('Server error: ' + result.error);
+                    }
+                } catch (error) {
+                    console.error('Error loading models:', error);
+                    this.updateStatus('Error: Could not connect to server. Make sure the server is running.');
+                }
+            }
+            
+            // Removed scanModelsWithFilePicker - now using server API
+            
+            countTotalModels(tree) {
+                let count = 0;
+                
+                function countInNode(node) {
+                    if (node['_models']) {
+                        count += node['_models'].length;
+                    }
+                    
+                    for (const key in node) {
+                        if (key !== '_models' && typeof node[key] === 'object') {
+                            countInNode(node[key]);
+                        }
+                    }
+                }
+                
+                countInNode(tree);
+                return count;
+            }
+            
+            // Remove old scanModelsHierarchically - replaced with scanModelsWithFilePicker
+            
+            // Removed scanDirectoryHandle - now using server API
+            
+            // Removed scanModelFolder - now using server API
+            
+            // Removed findAssociatedFile - now using server API
+            
+            getDemoData(rootDir) {
+                // Fallback demo data when real file access isn't available
+                const modelTree = {};
+                
+                for (const whitelistFolder of this.folderWhitelist) {
+                    modelTree[whitelistFolder] = {
+                        '_models': [
+                            {
+                                name: `demo_${whitelistFolder.toLowerCase()}_model`,
+                                path: `${rootDir}/${whitelistFolder}/demo_model.safetensors`,
+                                preview: null,
+                                json: null,
+                                modified: Date.now() - Math.random() * 86400000
+                            }
+                        ]
+                    };
+                }
+                
+                return modelTree;
+            }
+            
+            hideWelcomeMessage() {
+                document.getElementById('welcomeMessage').style.display = 'none';
+            }
+            
+            showWelcomeMessage() {
+                document.getElementById('welcomeMessage').style.display = 'block';
+            }
+            
+            populateTree(treeData, parent = null, depth = 0, pathSoFar = []) {
+                const container = document.getElementById('treeContainer');
+                
+                if (parent === null) {
+                    container.innerHTML = ''; // Clear on root call
+                    console.log('🌲 DEBUG: Building tree from data:', treeData);
+                }
+                
+                const sortedKeys = Object.keys(treeData)
+                    .filter(k => k !== '_models')
+                    .sort();
+                
+                console.log(`🌲 DEBUG: At depth ${depth}, keys:`, sortedKeys);
+                
+                for (const key of sortedKeys) {
+                    const value = treeData[key];
+                    const currentPath = [...pathSoFar, key];
+                    
+                    // Create folder element
+                    const folderElement = document.createElement('div');
+                    folderElement.className = 'tree-item tree-folder';
+                    folderElement.style.paddingLeft = `${16 + depth * 16}px`;
+                    folderElement.innerHTML = `
+                        <i class="fas fa-folder mr-2" style="color: var(--brand-400)"></i>
+                        <span>${key}</span>
+                    `;
+                    
+                    // Store path data
+                    folderElement.dataset.path = JSON.stringify(currentPath);
+                    
+                    // Add click handler
+                    folderElement.addEventListener('click', (e) => {
+                        e.stopPropagation();
+                        console.log('🖱️ DEBUG: Clicked folder:', key, 'Full path:', currentPath);
+                        this.onTreeSelect(currentPath);
+                    });
+                    
+                    container.appendChild(folderElement);
+                    
+                    // Recursively add subfolders
+                    if (typeof value === 'object' && value !== null) {
+                        this.populateTree(value, folderElement, depth + 1, currentPath);
+                    }
+                }
+            }
+            
+            getPathToNode(element) {
+                // Helper to build path - simplified for demo
+                return [];
+            }
+            
+            onTreeSelect(path) {
+                console.log('🎯 DEBUG: onTreeSelect called with path:', path);
+                this.selectedPath = path;
+                
+                // Clear search when selecting a new folder
+                this.clearSearch();
+                
+                const models = this.findModelsInTree(this.modelTree, path);
+                console.log('🎯 DEBUG: Found models:', models);
+                this.currentModels = models;
+                this.allModels = models; // Store for search
+                
+                if (models && models.length > 0) {
+                    document.getElementById('galleryTitle').textContent = `Models in ${path.join('/')} and subfolders`;
+                    console.log('🎯 DEBUG: Calling displayModels with', models.length, 'models');
+                    this.displayModels(models);
+                    this.updateStatus(`Found ${models.length} models in ${path.join('/')} and its subfolders`);
+                } else {
+                    console.log('🎯 DEBUG: No models found, clearing gallery');
+                    document.getElementById('galleryTitle').textContent = 'No models found';
+                    document.getElementById('galleryGrid').innerHTML = '';
+                    this.updateStatus(`No models found in ${path.join('/')} or its subfolders`);
+                }
+            }
+            
+            findModelsInTree(treeData, targetPath) {
+                console.log('🔍 DEBUG: findModelsInTree called with path:', targetPath);
+                console.log('🔍 DEBUG: Tree data keys:', Object.keys(treeData));
+                
+                if (!targetPath || targetPath.length === 0) {
+                    // For root level, collect all models recursively
+                    return this.collectAllModelsRecursively(treeData);
+                }
+                
+                const currentFolder = targetPath[0];
+                const remainingPath = targetPath.slice(1);
+                
+                console.log('🔍 DEBUG: Looking for folder:', currentFolder, 'in tree data');
+                console.log('🔍 DEBUG: Available folders:', Object.keys(treeData).filter(k => k !== '_models'));
+                
+                if (currentFolder in treeData) {
+                    if (remainingPath.length === 0) {
+                        // Found the target folder - collect all models from this folder and its subfolders
+                        const models = this.collectAllModelsRecursively(treeData[currentFolder]);
+                        console.log('🔍 DEBUG: Found', models.length, 'models in', currentFolder, 'and its subfolders');
+                        return models;
+                    } else if (typeof treeData[currentFolder] === 'object') {
+                        console.log('🔍 DEBUG: Recursing into', currentFolder, 'with remaining path:', remainingPath);
+                        return this.findModelsInTree(treeData[currentFolder], remainingPath);
+                    }
+                } else {
+                    console.log('🔍 DEBUG: Folder', currentFolder, 'not found in tree data');
+                }
+                
+                return [];
+            }
+            
+            collectAllModelsRecursively(nodeData) {
+                let allModels = [];
+                
+                // Add models from current node
+                if (nodeData['_models']) {
+                    allModels = allModels.concat(nodeData['_models']);
+                }
+                
+                // Recursively collect models from all child folders
+                for (const key in nodeData) {
+                    if (key !== '_models' && typeof nodeData[key] === 'object' && nodeData[key] !== null) {
+                        const childModels = this.collectAllModelsRecursively(nodeData[key]);
+                        allModels = allModels.concat(childModels);
+                    }
+                }
+                
+                return allModels;
+            }
+
+            changeSortMode(mode) {
+                if (this.sortMode === mode) return;
+                
+                this.sortMode = mode;
+                
+                // Update button appearances
+                document.getElementById('sortName').className = mode === 'name'
+                    ? 'btn-active px-3 py-1 rounded text-sm'
+                    : 'btn-secondary px-3 py-1 rounded text-sm';
+                document.getElementById('sortDate').className = mode === 'date'
+                    ? 'btn-active px-3 py-1 rounded text-sm'
+                    : 'btn-secondary px-3 py-1 rounded text-sm';
+                
+                // Re-display models with new sorting
+                const modelsToDisplay = this.filteredModels.length > 0 ? this.filteredModels : this.currentModels;
+                if (modelsToDisplay.length > 0) {
+                    this.displayModels(modelsToDisplay, this.filteredModels.length > 0);
+                    this.updateStatus(`Sorting by ${mode === 'name' ? 'name' : 'date'}`);
+                }
+            }
+            
+            handleSearch(searchTerm) {
+                const trimmedTerm = searchTerm.trim().toLowerCase();
+                const clearButton = document.getElementById('clearSearch');
+                
+                // Show/hide clear button
+                if (trimmedTerm) {
+                    clearButton.classList.remove('hidden');
+                } else {
+                    clearButton.classList.add('hidden');
+                }
+                
+                // If no search term, show all current models
+                if (!trimmedTerm) {
+                    this.filteredModels = [];
+                    this.displayModels(this.currentModels);
+                    document.getElementById('galleryTitle').textContent = this.selectedPath.length > 0 
+                        ? `Models in ${this.selectedPath.join('/')} and subfolders`
+                        : 'Select a Folder';
+                    return;
+                }
+                
+                // Filter models based on search term
+                this.filteredModels = this.allModels.filter(model => {
+                    const nameMatch = model.name.toLowerCase().includes(trimmedTerm);
+                    const pathMatch = model.path.toLowerCase().includes(trimmedTerm);
+                    
+                    // Search in metadata if available
+                    let metadataMatch = false;
+                    if (model.metadata) {
+                        const metadataStr = JSON.stringify(model.metadata).toLowerCase();
+                        metadataMatch = metadataStr.includes(trimmedTerm);
+                    }
+                    
+                    return nameMatch || pathMatch || metadataMatch;
+                });
+                
+                // Update gallery title
+                document.getElementById('galleryTitle').textContent = `Search: "${searchTerm}"`;
+                
+                // Display filtered results
+                this.displayModels(this.filteredModels, true);
+                
+                console.log(`🔍 DEBUG: Search for "${searchTerm}" found ${this.filteredModels.length} results`);
+            }
+            
+            clearSearch() {
+                const searchInput = document.getElementById('searchInput');
+                const clearButton = document.getElementById('clearSearch');
+                
+                searchInput.value = '';
+                clearButton.classList.add('hidden');
+                this.filteredModels = [];
+                
+                // Show current folder models
+                this.displayModels(this.currentModels);
+                document.getElementById('galleryTitle').textContent = this.selectedPath.length > 0 
+                    ? `Models in ${this.selectedPath.join('/')} and subfolders`
+                    : 'Select a Folder';
+                    
+                this.updateStatus('Search cleared');
+            }
+            
+            refreshModels() {
+                this.updateStatus('Refreshing models and thumbnails...');
+                
+                // Force refresh all current thumbnails immediately
+                this.hardRefreshAllThumbnails();
+                
+                // Then reload the models data
+                this.loadModels();
+            }
+            
+            async cacheThumbnails() {
+                if (this.currentModels.length === 0) {
+                    alert('No models to cache thumbnails for.');
+                    return;
+                }
+                
+                this.updateStatus('Caching thumbnails...');
+                
+                try {
+                    const response = await fetch('/api/cache-thumbnails', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({
+                            models: this.currentModels
+                        })
+                    });
+                    
+                    const result = await response.json();
+                    
+                    if (result.success) {
+                        this.updateStatus(result.message);
+                        // alert(`Thumbnail caching complete! ${result.message}`);
+                        
+                        // Refresh the gallery to show cached thumbnails
+                        if (this.selectedPath) {
+                            this.onTreeSelect(this.selectedPath);
+                        }
+                    } else {
+                        this.updateStatus('Error caching thumbnails');
+                        alert(`Error caching thumbnails: ${result.error || 'Unknown error'}`);
+                    }
+                } catch (error) {
+                    console.error('Error caching thumbnails:', error);
+                    this.updateStatus('Error caching thumbnails');
+                    alert(`Error caching thumbnails: ${error.message}`);
+                }
+            }
+            
+            displayModels(models, isSearchResult = false) {
+                console.log('🖼️ DEBUG: displayModels called with:', models);
+                const grid = document.getElementById('galleryGrid');
+                grid.innerHTML = '';
+                
+                if (!models || models.length === 0) {
+                    console.log('🖼️ DEBUG: No models to display');
+                    const message = isSearchResult
+                        ? '<div class="w-full text-center py-16" style="color: var(--gray-500)"><i class="fas fa-search text-4xl mb-4 block"></i><div class="text-lg">No models found</div><div class="text-sm mt-2">Try a different search term</div></div>'
+                        : '<div class="w-full text-center py-16" style="color: var(--gray-500)"><i class="fas fa-folder-open text-4xl mb-4 block"></i><div class="text-lg">No models found</div><div class="text-sm mt-2">Try selecting a different folder</div></div>';
+                    grid.innerHTML = message;
+                    return;
+                }
+                
+                console.log('🖼️ DEBUG: Displaying', models.length, 'models');
+                
+                // Sort models
+                let sortedModels;
+                if (this.sortMode === 'name') {
+                    sortedModels = models.slice().sort((a, b) => a.name.toLowerCase().localeCompare(b.name.toLowerCase()));
+                } else {
+                    sortedModels = models.slice().sort((a, b) => b.modified - a.modified);
+                }
+                
+                console.log('🖼️ DEBUG: Sorted models:', sortedModels);
+                
+                // Create model cards
+                sortedModels.forEach((model, index) => {
+                    console.log(`🖼️ DEBUG: Creating card ${index + 1}/${sortedModels.length} for:`, model.name);
+                    const card = this.createModelCard(model);
+                    grid.appendChild(card);
+                });
+                
+                const statusText = isSearchResult 
+                    ? `Found ${models.length} models matching search`
+                    : `Displaying ${models.length} models sorted ${this.sortMode === 'name' ? 'alphabetically' : 'by date (newest first)'}`;
+                this.updateStatus(statusText);
+            }
+            
+            createModelCard(model) {
+                const card = document.createElement('div');
+                card.className = 'gallery-card';
+
+                // Full-bleed image container — also hosts the header/footer overlays
+                const imageContainer = document.createElement('div');
+                imageContainer.className = 'gallery-image';
+
+                if (model.preview) {
+                    const img = document.createElement('img');
+                    const imageUrl = `/api/image/${encodeURIComponent(model.preview)}`;
+                    img.src = imageUrl;
+                    img.loading = 'lazy';
+                    img.onerror = () => {
+                        img.remove();
+                        const placeholder = document.createElement('div');
+                        placeholder.className = 'no-preview';
+                        placeholder.innerHTML = '<i class="fas fa-image"></i><span>No preview</span>';
+                        imageContainer.prepend(placeholder);
+                    };
+                    imageContainer.appendChild(img);
+                } else {
+                    const placeholder = document.createElement('div');
+                    placeholder.className = 'no-preview';
+                    placeholder.innerHTML = '<i class="fas fa-image"></i><span>No preview</span>';
+                    imageContainer.appendChild(placeholder);
+                }
+
+                // ── Top overlay strip: folder-name badge (left) + globe icon (right) ──
+                const header = document.createElement('div');
+                header.className = 'gallery-card-header';
+
+                const folderPath = model.path;
+                if (folderPath) {
+                    const pathParts = folderPath.split('/');
+                    const folderName = pathParts[pathParts.length - 2] || 'Unknown';
+                    const folderBadge = document.createElement('span');
+                    folderBadge.className = 'gallery-folder-badge';
+                    folderBadge.textContent = folderName;
+                    folderBadge.title = folderName;
+                    header.appendChild(folderBadge);
+                }
+
+                const headerActions = document.createElement('div');
+                headerActions.className = 'gallery-card-actions';
+
+                if (this.sortMode === 'date') {
+                    const dateLabel = document.createElement('span');
+                    dateLabel.className = 'gallery-date-badge';
+                    dateLabel.textContent = new Date(model.modified * 1000).toLocaleDateString();
+                    headerActions.appendChild(dateLabel);
+                }
+                header.appendChild(headerActions);
+
+                // ── Bottom overlay strip: model title (left) + folder-open icon (right) ──
+                const footer = document.createElement('div');
+                footer.className = 'gallery-card-footer';
+
+                const titleEl = document.createElement('span');
+                titleEl.className = 'gallery-card-title';
+                titleEl.textContent = model.name;
+                titleEl.title = model.name;
+                footer.appendChild(titleEl);
+
+                const footerActions = document.createElement('div');
+                footerActions.className = 'gallery-card-actions';
+
+                if (model.url) {
+                    const globeBtn = document.createElement('button');
+                    globeBtn.type = 'button';
+                    globeBtn.className = 'gallery-icon-btn';
+                    globeBtn.title = `Open ${model.url}`;
+                    globeBtn.innerHTML = '<i class="fas fa-globe"></i>';
+                    globeBtn.addEventListener('click', (e) => {
+                        e.stopPropagation();
+                        window.open(model.url, '_blank', 'noopener,noreferrer');
+                    });
+                    footerActions.appendChild(globeBtn);
+                }
+
+                const openFolderBtn = document.createElement('button');
+                openFolderBtn.type = 'button';
+                openFolderBtn.className = 'gallery-icon-btn';
+                openFolderBtn.title = 'Open in file manager';
+                openFolderBtn.innerHTML = '<i class="fas fa-folder-open"></i>';
+                openFolderBtn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    this.openInFileManager(model);
+                });
+                footerActions.appendChild(openFolderBtn);
+                footer.appendChild(footerActions);
+
+                imageContainer.appendChild(header);
+                imageContainer.appendChild(footer);
+                card.appendChild(imageContainer);
+
+                card.addEventListener('click', () => {
+                    this.showModelInfo(model);
+                });
+
+                return card;
+            }
+
+            async openInFileManager(model) {
+                try {
+                    const res = await fetch('/api/open-file-explorer', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ filePath: model.path })
+                    });
+                    const data = await res.json();
+                    if (!data.success) {
+                        this.updateStatus(data.error || 'Failed to open folder');
+                    }
+                } catch (err) {
+                    console.error('openInFileManager failed:', err);
+                    this.updateStatus('Failed to open folder: ' + err.message);
+                }
+            }
+            
+            async showModelInfo(model) {
+                this.currentModel = model;
+                
+                try {
+                    let jsonData;
+                    
+                    if (model.json) {
+                        // Fetch actual JSON data from server
+                        const response = await fetch(`/api/json/${encodeURIComponent(model.json)}`);
+                        jsonData = await response.json();
+                        
+                        // Store metadata for search
+                        model.metadata = jsonData;
+                    } else {
+                        // Use default template
+                        jsonData = {
+                            "description": "",
+                            "sd_version": "",
+                            "activation_text": "",
+                            "preferred_weight": 0,
+                            "negative_text": "",
+                            "notes": ""
+                        };
+                        model.metadata = jsonData;
+                    }
+                    
+                    // Populate modal with model data
+                    this.populateModal(model, jsonData);
+                    
+                    // Show the modal
+                    this.showModelModal();
+                    
+                    const modDate = new Date(model.modified * 1000).toLocaleString();
+                    this.updateStatus(`Opened model: ${model.name} (Last modified: ${modDate})`);
+                    
+                } catch (error) {
+                    console.error('Error loading model info:', error);
+                    this.updateStatus('Error loading model information');
+                    alert('Error loading model information: ' + error.message);
+                }
+            }
+            
+            populateModal(model, jsonData) {
+                // Set model name and path
+                document.getElementById('modalModelName').textContent = model.name;
+                document.getElementById('modalModelPath').textContent = model.path;
+                
+                // Set thumbnail
+                const thumbnailImg = document.getElementById('modalThumbnailImg');
+                const thumbnailPlaceholder = document.getElementById('modalThumbnailPlaceholder');
+                
+                if (model.preview) {
+                    // For popup, always look for high-res image in parent folder (not in thumbs)
+                    let originalImagePath = model.preview;
+                    const previewFileName = model.preview.split('/').pop();
+                    
+                    if (previewFileName.startsWith('aig_')) {
+                        // Strip aig_ prefix to get original filename
+                        const originalFileName = previewFileName.substring(4);
+                        originalImagePath = model.preview.replace(previewFileName, originalFileName);
+                        
+                        // If the aig_ file is in thumbs folder, look for original in parent folder
+                        if (model.preview.includes('/thumbs/')) {
+                            originalImagePath = model.preview.replace('/thumbs/', '/').replace(previewFileName, originalFileName);
+                        }
+                    } else if (model.preview.includes('/thumbs/')) {
+                        // If regular thumbnail is in thumbs folder, look in parent folder
+                        originalImagePath = model.preview.replace('/thumbs/', '/');
+                    }
+                    
+                    // Add cache-busting to modal thumbnail to ensure fresh image
+                    thumbnailImg.src = `/api/image/${encodeURIComponent(originalImagePath)}?t=${Date.now()}`;
+                    thumbnailImg.style.display = 'block';
+                    thumbnailPlaceholder.style.display = 'none';
+                } else {
+                    thumbnailImg.style.display = 'none';
+                    thumbnailPlaceholder.style.display = 'flex';
+                }
+                
+                // Populate form fields
+                document.getElementById('modelDescription').value = jsonData.description || '';
+                document.getElementById('modelSdVersion').value = jsonData.sd_version || jsonData['sd version'] || '';
+                document.getElementById('modelActivationText').value = jsonData.activation_text || jsonData['activation text'] || '';
+                document.getElementById('modelPostPrompt').value = jsonData.post_prompt || jsonData['post prompt'] || '';
+                document.getElementById('modelWeight').value = jsonData.preferred_weight || jsonData['preferred weight'] || 0;
+                document.getElementById('modelNegativeText').value = jsonData.negative_text || jsonData['negative text'] || '';
+                document.getElementById('modelNotes').value = jsonData.notes || '';
+
+                // Populate checkpoint-specific fields
+                document.getElementById('modelCheckpoint').value = jsonData.checkpoint || '';
+                document.getElementById('modelVae').value = jsonData.vae || '';
+                document.getElementById('modelSteps').value = jsonData.steps || '';
+                document.getElementById('modelCfgScale').value = jsonData.cfg_scale || jsonData['cfg scale'] || '';
+                document.getElementById('modelSamplerName').value = jsonData.sampler_name || jsonData['sampler name'] || '';
+                document.getElementById('modelScheduler').value = jsonData.scheduler || '';
+                document.getElementById('modelWidth').value = jsonData.width || '';
+                document.getElementById('modelHeight').value = jsonData.height || '';
+
+                // Check for URLs in description and update visit button
+                this.updateVisitLinkButton();
+                
+                // Setup drag and drop for thumbnail
+                this.setupThumbnailDragDrop();
+                
+                // Clear status
+                document.getElementById('modalStatus').textContent = '';
+
+                // Fresh model load is, by definition, not dirty yet.
+                // Defer so any input events from programmatic value-setting settle first.
+                setTimeout(() => { this.isDirty = false; }, 0);
+            }
+
+            showModelModal() {
+                const modal = document.getElementById('modelInfoModal');
+                modal.classList.remove('hidden', 'hide');
+                modal.classList.add('show');
+            }
+            
+            hideModelModal() {
+                const modal = document.getElementById('modelInfoModal');
+                modal.classList.remove('show');
+                modal.classList.add('hide');
+                
+                setTimeout(() => {
+                    modal.classList.add('hidden');
+                    modal.classList.remove('hide');
+                }, 300);
+            }
+            
+            getFormData() {
+                return {
+                    description: document.getElementById('modelDescription').value,
+                    sd_version: document.getElementById('modelSdVersion').value,
+                    activation_text: document.getElementById('modelActivationText').value,
+                    post_prompt: document.getElementById('modelPostPrompt').value,
+                    preferred_weight: parseFloat(document.getElementById('modelWeight').value) || 0,
+                    negative_text: document.getElementById('modelNegativeText').value,
+                    notes: document.getElementById('modelNotes').value,
+                    // Checkpoint-specific settings
+                    checkpoint: document.getElementById('modelCheckpoint').value,
+                    vae: document.getElementById('modelVae').value,
+                    steps: parseInt(document.getElementById('modelSteps').value) || 0,
+                    cfg_scale: parseFloat(document.getElementById('modelCfgScale').value) || 0,
+                    sampler_name: document.getElementById('modelSamplerName').value,
+                    scheduler: document.getElementById('modelScheduler').value,
+                    width: parseInt(document.getElementById('modelWidth').value) || 0,
+                    height: parseInt(document.getElementById('modelHeight').value) || 0
+                };
+            }
+            
+            async saveModelInfo() {
+                if (!this.currentModel) return;
+                
+                try {
+                    const formData = this.getFormData();
+                    const saveBtn = document.getElementById('saveModalBtn');
+                    const modalStatus = document.getElementById('modalStatus');
+                    
+                    // Disable save button and show loading
+                    saveBtn.disabled = true;
+                    saveBtn.textContent = 'Saving...';
+                    modalStatus.textContent = 'Saving changes...';
+                    
+                    // Determine JSON path
+                    let jsonPath = this.currentModel.json;
+                    if (!jsonPath) {
+                        const modelPath = this.currentModel.path;
+                        const pathParts = modelPath.split('/');
+                        const fileName = pathParts[pathParts.length - 1];
+                        const fileNameWithoutExt = fileName.replace(/\.[^/.]+$/, "");
+                        pathParts[pathParts.length - 1] = fileNameWithoutExt + '.json';
+                        jsonPath = pathParts.join('/');
+                    }
+                    
+                    // Save to server
+                    const response = await fetch(`/api/json/${encodeURIComponent(jsonPath)}`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify(formData)
+                    });
+                    
+                    const result = await response.json();
+                    
+                    if (result.success) {
+                        // Update model metadata
+                        this.currentModel.metadata = formData;
+                        if (!this.currentModel.json) {
+                            this.currentModel.json = jsonPath;
+                        }
+                        this.isDirty = false;
+
+                        modalStatus.textContent = 'Changes saved successfully!';
+                        this.updateStatus(result.message || 'Model information saved');
+                        
+                        // Close modal after short delay
+                        setTimeout(() => {
+                            this.hideModelModal();
+                        }, 1000);
+                        
+                    } else {
+                        throw new Error(result.error || 'Failed to save changes');
+                    }
+                    
+                } catch (error) {
+                    console.error('Error saving model info:', error);
+                    document.getElementById('modalStatus').textContent = 'Error saving changes: ' + error.message;
+                    this.updateStatus('Error saving model information');
+                } finally {
+                    // Re-enable save button
+                    const saveBtn = document.getElementById('saveModalBtn');
+                    saveBtn.disabled = false;
+                    saveBtn.textContent = 'Save Changes';
+                }
+            }
+            
+            setupThumbnailDragDrop() {
+                const thumbnailContainer = document.getElementById('modalThumbnail');
+                const fileInput = document.getElementById('thumbnailFileInput');
+                const overlay = document.getElementById('modalThumbnailOverlay');
+                const dragOverlay = document.getElementById('modalThumbnailDragOver');
+                
+                // Remove existing event listeners to prevent duplicates
+                this.removeThumbnailEventListeners();
+                
+                // Store references to the bound functions so we can remove them later
+                this.thumbnailEventListeners = {
+                    mouseenter: () => {
+                        if (this.currentModel && this.currentModel.preview) {
+                            overlay.classList.remove('hidden');
+                        }
+                    },
+                    mouseleave: () => {
+                        overlay.classList.add('hidden');
+                    },
+                    click: (e) => {
+                        e.preventDefault();
+                        fileInput.click();
+                    },
+                    change: (e) => {
+                        const file = e.target.files[0];
+                        if (file) {
+                            this.handleThumbnailFile(file);
+                        }
+                    },
+                    dragover: (e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        dragOverlay.classList.remove('hidden');
+                        thumbnailContainer.style.borderColor = 'var(--brand-500)';
+                    },
+                    dragleave: (e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        
+                        // Only hide if we're leaving the container, not entering a child
+                        if (!thumbnailContainer.contains(e.relatedTarget)) {
+                            dragOverlay.classList.add('hidden');
+                            thumbnailContainer.style.borderColor = 'transparent';
+                        }
+                    },
+                    drop: (e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        
+                        dragOverlay.classList.add('hidden');
+                        thumbnailContainer.style.borderColor = 'transparent';
+                        
+                        const files = e.dataTransfer.files;
+                        if (files.length > 0) {
+                            this.handleThumbnailFile(files[0]);
+                        }
+                    }
+                };
+                
+                // Add event listeners
+                thumbnailContainer.addEventListener('mouseenter', this.thumbnailEventListeners.mouseenter);
+                thumbnailContainer.addEventListener('mouseleave', this.thumbnailEventListeners.mouseleave);
+                thumbnailContainer.addEventListener('click', this.thumbnailEventListeners.click);
+                fileInput.addEventListener('change', this.thumbnailEventListeners.change);
+                thumbnailContainer.addEventListener('dragover', this.thumbnailEventListeners.dragover);
+                thumbnailContainer.addEventListener('dragleave', this.thumbnailEventListeners.dragleave);
+                thumbnailContainer.addEventListener('drop', this.thumbnailEventListeners.drop);
+            }
+            
+            removeThumbnailEventListeners() {
+                if (this.thumbnailEventListeners) {
+                    const thumbnailContainer = document.getElementById('modalThumbnail');
+                    const fileInput = document.getElementById('thumbnailFileInput');
+                    
+                    if (thumbnailContainer && fileInput) {
+                        thumbnailContainer.removeEventListener('mouseenter', this.thumbnailEventListeners.mouseenter);
+                        thumbnailContainer.removeEventListener('mouseleave', this.thumbnailEventListeners.mouseleave);
+                        thumbnailContainer.removeEventListener('click', this.thumbnailEventListeners.click);
+                        fileInput.removeEventListener('change', this.thumbnailEventListeners.change);
+                        thumbnailContainer.removeEventListener('dragover', this.thumbnailEventListeners.dragover);
+                        thumbnailContainer.removeEventListener('dragleave', this.thumbnailEventListeners.dragleave);
+                        thumbnailContainer.removeEventListener('drop', this.thumbnailEventListeners.drop);
+                    }
+                    
+                    this.thumbnailEventListeners = null;
+                }
+            }
+            
+            validateImageFile(file) {
+                const validTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp'];
+                const maxSize = 10 * 1024 * 1024; // 10MB
+                
+                if (!validTypes.includes(file.type)) {
+                    throw new Error('Invalid file type. Please select a JPEG, PNG, GIF, or WebP image.');
+                }
+                
+                if (file.size > maxSize) {
+                    throw new Error('File too large. Please select an image under 10MB.');
+                }
+                
+                return true;
+            }
+            
+            async handleThumbnailFile(file) {
+                try {
+                    // Validate file
+                    this.validateImageFile(file);
+                    
+                    // Show confirmation dialog
+                    const hasExisting = this.currentModel && this.currentModel.preview;
+                    const message = hasExisting 
+                        ? `Replace the current thumbnail for "${this.currentModel.name}" with this new image?`
+                        : `Add this image as the thumbnail for "${this.currentModel.name}"?`;
+                    
+                    if (!confirm(message)) {
+                        return;
+                    }
+                    
+                    // Show loading state
+                    document.getElementById('modalStatus').textContent = 'Uploading thumbnail...';
+                    const overlay = document.getElementById('modalThumbnailOverlay');
+                    overlay.innerHTML = '<i class="fas fa-spinner fa-spin text-4xl mb-2"></i><p class="text-sm font-medium">Uploading...</p>';
+                    overlay.classList.remove('hidden');
+                    
+                    // Upload file
+                    await this.uploadThumbnail(file);
+                    
+                } catch (error) {
+                    console.error('Error handling thumbnail file:', error);
+                    alert('Error: ' + error.message);
+                    document.getElementById('modalStatus').textContent = 'Error uploading thumbnail';
+                } finally {
+                    // Hide loading overlay
+                    const overlay = document.getElementById('modalThumbnailOverlay');
+                    overlay.classList.add('hidden');
+                    overlay.innerHTML = '<i class="fas fa-cloud-upload-alt text-4xl mb-2"></i><p class="text-sm font-medium">Replace thumbnail</p>';
+                }
+            }
+            
+            async uploadThumbnail(file) {
+                if (!this.currentModel) {
+                    throw new Error('No model selected');
+                }
+                
+                const formData = new FormData();
+                formData.append('thumbnail', file);
+                formData.append('modelPath', this.currentModel.path);
+                
+                const response = await fetch('/api/upload-thumbnail', {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                const result = await response.json();
+                
+                if (!result.success) {
+                    throw new Error(result.error || 'Failed to upload thumbnail');
+                }
+                
+                // Update the current model's preview path
+                this.currentModel.preview = result.thumbnailPath;
+                
+                // Update the image display
+                const thumbnailImg = document.getElementById('modalThumbnailImg');
+                const thumbnailPlaceholder = document.getElementById('modalThumbnailPlaceholder');
+                
+                // Force reload by clearing src first, then setting with cache-busting timestamp
+                thumbnailImg.src = '';
+                setTimeout(() => {
+                    thumbnailImg.src = `/api/image/${encodeURIComponent(result.thumbnailPath)}?t=${Date.now()}`;
+                    thumbnailImg.style.display = 'block';
+                    thumbnailPlaceholder.style.display = 'none';
+                }, 100);
+                
+                // Update status
+                document.getElementById('modalStatus').textContent = 'Thumbnail updated successfully!';
+                this.updateStatus('Thumbnail updated for ' + this.currentModel.name);
+                
+                // Refresh the gallery view to show the new thumbnail immediately
+                if (this.selectedPath) {
+                    // Force cache-busting for all thumbnails in the gallery
+                    this.refreshThumbnailsInGallery();
+                    
+                    // Also refresh the data after a short delay to ensure server has processed the change
+                    setTimeout(() => {
+                        this.onTreeSelect(this.selectedPath);
+                    }, 500);
+                }
+            }
+            
+            refreshThumbnailsInGallery() {
+                // Force refresh all thumbnails in the current gallery view
+                const galleryImages = document.querySelectorAll('#galleryGrid img');
+                const timestamp = Date.now();
+                
+                galleryImages.forEach(img => {
+                    const currentSrc = img.src;
+                    if (currentSrc && currentSrc.includes('/api/image/')) {
+                        // Remove any existing timestamp parameter
+                        const baseSrc = currentSrc.split('?')[0];
+                        // Add new timestamp to force cache refresh
+                        img.src = `${baseSrc}?t=${timestamp}`;
+                    }
+                });
+                
+                console.log('🔄 Refreshed', galleryImages.length, 'thumbnails with cache-busting');
+            }
+            
+            hardRefreshAllThumbnails() {
+                // Nuclear option: force reload all thumbnails with multiple cache-busting techniques
+                const galleryImages = document.querySelectorAll('#galleryGrid img');
+                const timestamp = Date.now();
+                
+                galleryImages.forEach((img, index) => {
+                    const currentSrc = img.src;
+                    if (currentSrc && currentSrc.includes('/api/image/')) {
+                        // Remove any existing timestamp parameter
+                        const baseSrc = currentSrc.split('?')[0];
+                        
+                        // Use multiple cache-busting techniques
+                        const cacheBustingUrl = `${baseSrc}?t=${timestamp}&r=${Math.random()}&i=${index}`;
+                        
+                        // Force the browser to reload by using a new Image object
+                        const newImg = new Image();
+                        newImg.onload = () => {
+                            img.src = cacheBustingUrl;
+                        };
+                        newImg.onerror = () => {
+                            // If the new image fails to load, still try to update the src
+                            img.src = cacheBustingUrl;
+                        };
+                        newImg.src = cacheBustingUrl;
+                    }
+                });
+                
+                console.log('🔄 Hard refreshed', galleryImages.length, 'thumbnails with aggressive cache-busting');
+            }
+            
+            detectUrlInText(text) {
+                // Comprehensive URL detection regex
+                const urlRegex = /(https?:\/\/[^\s]+)|(www\.[^\s]+)|([a-zA-Z0-9-]+\.(com|org|net|edu|gov|io|co|ai|app|dev|xyz|me|info)[^\s]*)/gi;
+                const matches = text.match(urlRegex);
+                
+                if (matches && matches.length > 0) {
+                    let url = matches[0];
+                    
+                    // Add protocol if missing
+                    if (url.startsWith('www.')) {
+                        url = 'https://' + url;
+                    } else if (!url.startsWith('http://') && !url.startsWith('https://')) {
+                        url = 'https://' + url;
+                    }
+                    
+                    // Clean up any trailing punctuation
+                    url = url.replace(/[.,;:!?)]+$/, '');
+                    
+                    return url;
+                }
+                
+                return null;
+            }
+            
+            updateVisitLinkButton() {
+                const description = document.getElementById('modelDescription').value;
+                const visitBtn = document.getElementById('visitLinkBtn');
+                const detectedUrl = this.detectUrlInText(description);
+                
+                if (detectedUrl) {
+                    visitBtn.classList.remove('hidden');
+                    visitBtn.onclick = () => this.openUrl(detectedUrl);
+                } else {
+                    visitBtn.classList.add('hidden');
+                    visitBtn.onclick = null;
+                }
+            }
+            
+            openUrl(url) {
+                try {
+                    // Validate URL before opening
+                    new URL(url);
+                    window.open(url, '_blank', 'noopener,noreferrer');
+                } catch (error) {
+                    console.error('Invalid URL:', url);
+                    alert('Invalid URL detected. Please check the link in the description.');
+                }
+            }
+            
+            copyActivationText() {
+                const activationTextInput = document.getElementById('modelActivationText');
+                const activationText = activationTextInput.value.trim();
+                
+                if (!activationText) {
+                    this.updateStatus('No activation text to copy');
+                    return;
+                }
+                
+                try {
+                    // Copy to clipboard
+                    navigator.clipboard.writeText(activationText).then(() => {
+                        this.updateStatus('Activation text copied to clipboard');
+                        
+                        // Visual feedback - briefly highlight the button
+                        const button = document.getElementById('copyActivationTextBtn');
+                        const originalText = button.innerHTML;
+                        button.innerHTML = '<i class="fas fa-check"></i>';
+                        button.style.color = 'var(--brand-400)';
+                        
+                        setTimeout(() => {
+                            button.innerHTML = originalText;
+                            button.style.color = '';
+                        }, 1500);
+                    }).catch(err => {
+                        console.error('Failed to copy text: ', err);
+                        this.fallbackCopyText(activationText);
+                    });
+                } catch (error) {
+                    console.error('Clipboard API not available: ', error);
+                    this.fallbackCopyText(activationText);
+                }
+            }
+            
+            fallbackCopyText(text) {
+                // Fallback method for older browsers
+                const textArea = document.createElement('textarea');
+                textArea.value = text;
+                document.body.appendChild(textArea);
+                textArea.select();
+                textArea.setSelectionRange(0, 99999); // For mobile devices
+                
+                try {
+                    document.execCommand('copy');
+                    this.updateStatus('Activation text copied to clipboard');
+                    
+                    // Visual feedback
+                    const button = document.getElementById('copyActivationTextBtn');
+                    const originalText = button.innerHTML;
+                    button.innerHTML = '<i class="fas fa-check"></i>';
+                    button.style.color = 'var(--brand-400)';
+                    
+                    setTimeout(() => {
+                        button.innerHTML = originalText;
+                        button.style.color = '';
+                    }, 1500);
+                } catch (err) {
+                    console.error('Fallback copy failed: ', err);
+                    this.updateStatus('Failed to copy activation text');
+                }
+                
+                document.body.removeChild(textArea);
+            }
+            
+            copyPostPrompt() {
+                const postPromptInput = document.getElementById('modelPostPrompt');
+                const postPrompt = postPromptInput.value.trim();
+
+                if (!postPrompt) {
+                    this.updateStatus('No post prompt to copy');
+                    return;
+                }
+
+                try {
+                    // Copy to clipboard
+                    navigator.clipboard.writeText(postPrompt).then(() => {
+                        this.updateStatus('Post prompt copied to clipboard');
+
+                        // Visual feedback - briefly highlight the button
+                        const button = document.getElementById('copyPostPromptBtn');
+                        const originalText = button.innerHTML;
+                        button.innerHTML = '<i class="fas fa-check"></i>';
+                        button.style.color = 'var(--brand-400)';
+
+                        setTimeout(() => {
+                            button.innerHTML = originalText;
+                            button.style.color = '';
+                        }, 1500);
+                    }).catch(err => {
+                        console.error('Failed to copy text: ', err);
+                        this.fallbackCopyPostPrompt(postPrompt);
+                    });
+                } catch (error) {
+                    console.error('Clipboard API not available: ', error);
+                    this.fallbackCopyPostPrompt(postPrompt);
+                }
+            }
+
+            fallbackCopyPostPrompt(text) {
+                // Fallback method for older browsers
+                const textArea = document.createElement('textarea');
+                textArea.value = text;
+                document.body.appendChild(textArea);
+                textArea.select();
+                textArea.setSelectionRange(0, 99999); // For mobile devices
+
+                try {
+                    document.execCommand('copy');
+                    this.updateStatus('Post prompt copied to clipboard');
+
+                    // Visual feedback
+                    const button = document.getElementById('copyPostPromptBtn');
+                    const originalText = button.innerHTML;
+                    button.innerHTML = '<i class="fas fa-check"></i>';
+                    button.style.color = 'var(--brand-400)';
+
+                    setTimeout(() => {
+                        button.innerHTML = originalText;
+                        button.style.color = '';
+                    }, 1500);
+                } catch (err) {
+                    console.error('Fallback copy failed: ', err);
+                    this.updateStatus('Failed to copy post prompt');
+                }
+
+                document.body.removeChild(textArea);
+            }
+
+            copyNegativeText() {
+                const negativeTextInput = document.getElementById('modelNegativeText');
+                const negativeText = negativeTextInput.value.trim();
+
+                if (!negativeText) {
+                    this.updateStatus('No negative text to copy');
+                    return;
+                }
+
+                try {
+                    // Copy to clipboard
+                    navigator.clipboard.writeText(negativeText).then(() => {
+                        this.updateStatus('Negative text copied to clipboard');
+
+                        // Visual feedback - briefly highlight the button
+                        const button = document.getElementById('copyNegativeTextBtn');
+                        const originalText = button.innerHTML;
+                        button.innerHTML = '<i class="fas fa-check"></i>';
+                        button.style.color = 'var(--brand-400)';
+
+                        setTimeout(() => {
+                            button.innerHTML = originalText;
+                            button.style.color = '';
+                        }, 1500);
+                    }).catch(err => {
+                        console.error('Failed to copy text: ', err);
+                        this.fallbackCopyNegativeText(negativeText);
+                    });
+                } catch (error) {
+                    console.error('Clipboard API not available: ', error);
+                    this.fallbackCopyNegativeText(negativeText);
+                }
+            }
+            
+            fallbackCopyNegativeText(text) {
+                // Fallback method for older browsers
+                const textArea = document.createElement('textarea');
+                textArea.value = text;
+                document.body.appendChild(textArea);
+                textArea.select();
+                textArea.setSelectionRange(0, 99999); // For mobile devices
+                
+                try {
+                    document.execCommand('copy');
+                    this.updateStatus('Negative text copied to clipboard');
+                    
+                    // Visual feedback
+                    const button = document.getElementById('copyNegativeTextBtn');
+                    const originalText = button.innerHTML;
+                    button.innerHTML = '<i class="fas fa-check"></i>';
+                    button.style.color = 'var(--brand-400)';
+                    
+                    setTimeout(() => {
+                        button.innerHTML = originalText;
+                        button.style.color = '';
+                    }, 1500);
+                } catch (err) {
+                    console.error('Fallback copy failed: ', err);
+                    this.updateStatus('Failed to copy negative text');
+                }
+                
+                document.body.removeChild(textArea);
+            }
+            
+            async openFileExplorer() {
+                if (!this.currentModel) {
+                    alert('No model selected');
+                    return;
+                }
+                
+                try {
+                    // Send request to server to open file explorer
+                    const response = await fetch('/api/open-file-explorer', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({
+                            filePath: this.currentModel.path
+                        })
+                    });
+                    
+                    const result = await response.json();
+                    
+                    if (result.success) {
+                        this.updateStatus(`Opened file explorer for: ${this.currentModel.name}`);
+                    } else {
+                        throw new Error(result.error || 'Failed to open file explorer');
+                    }
+                    
+                } catch (error) {
+                    console.error('Error opening file explorer:', error);
+                    this.updateStatus('Error opening file explorer: ' + error.message);
+                    alert('Error opening file explorer: ' + error.message);
+                }
+            }
+            
+            validateAndCleanJson(jsonString) {
+                // Remove any potential BOM or invisible characters
+                const cleaned = jsonString.replace(/^\uFEFF/, '').trim();
+                
+                // Try to parse and return detailed error info
+                try {
+                    const parsed = JSON.parse(cleaned);
+                    return { valid: true, data: parsed, cleaned: cleaned };
+                } catch (error) {
+                    // Provide more helpful error messages
+                    let helpfulMessage = error.message;
+                    
+                    if (error.message.includes('Unexpected token')) {
+                        const match = error.message.match(/position (\d+)/);
+                        if (match) {
+                            const pos = parseInt(match[1]);
+                            const context = cleaned.substring(Math.max(0, pos - 20), pos + 20);
+                            helpfulMessage += `\n\nNear: "${context}"`;
+                        }
+                    }
+                    
+                    return { valid: false, error: helpfulMessage, cleaned: cleaned };
+                }
+            }
+            
+
+            detectModelType(fileName, metadata) {
+                const name = fileName.toLowerCase();
+                
+                if (metadata.sd_version || metadata.base_model) {
+                    if (name.includes('lora') || metadata.ss_network_module) return 'lora';
+                    if (name.includes('embedding') || name.includes('textual')) return 'embedding';
+                    if (name.includes('vae')) return 'vae';
+                    return 'checkpoint';
+                }
+                
+                if (name.includes('lora')) return 'lora';
+                if (name.includes('embedding') || name.includes('textual')) return 'embedding';
+                if (name.includes('vae')) return 'vae';
+                return 'checkpoint';
+            }
+
+            formatFileSize(bytes) {
+                if (bytes === 0) return '0 B';
+                const k = 1024;
+                const sizes = ['B', 'KB', 'MB', 'GB'];
+                const i = Math.floor(Math.log(bytes) / Math.log(k));
+                return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+            }
+
+            updateDisplay() {
+                this.updateFileCounter();
+                if (this.currentView === 'tree') {
+                    this.renderTree();
+                } else if (this.currentView === 'grid') {
+                    this.renderGrid();
+                } else {
+                    this.renderList();
+                }
+            }
+            
+            // Remove old methods that are no longer needed
+            // The new implementation focuses on the gallery.py functionality
+            
+            renderTreeLevel(treeLevel, depth, rootDir = '') {
+                let html = '';
+                
+                for (const [name, node] of treeLevel) {
+                    const indent = '&nbsp;'.repeat((depth - 1) * 4); // Adjust for root level
+                    const expandIcon = node.type === 'folder' 
+                        ? (node.expanded ? 'fas fa-chevron-down' : 'fas fa-chevron-right')
+                        : '';
+                    const folderIcon = node.type === 'folder' 
+                        ? (node.expanded ? 'fas fa-folder-open' : 'fas fa-folder')
+                        : this.getFileIcon(node.file?.type);
+                    
+                    const path = node.file ? node.file.path : name;
+                    const nodeId = `node-${rootDir.replace(/[^a-zA-Z0-9]/g, '-')}-${depth}-${name.replace(/[^a-zA-Z0-9]/g, '-')}`;
+                    
+                    html += `
+                        <div class="tree-item" data-type="${node.type}" data-path="${path}" data-depth="${depth}" data-name="${name}" data-root="${rootDir}" id="${nodeId}">
+                            ${indent}
+                            ${expandIcon ? `<i class="${expandIcon} mr-1 text-xs" style="width: 12px;"></i>` : '<span style="width: 13px; display: inline-block;"></span>'}
+                            <i class="${folderIcon} mr-2 text-sm"></i>
+                            <span class="select-none">${name}</span>
+                            ${node.file ? `<span class="text-gray-500 text-sm ml-2">(${this.formatFileSize(node.file.size)})</span>` : ''}
+                        </div>
+                    `;
+                    
+                    if (node.type === 'folder' && node.expanded && node.children.size > 0) {
+                        html += this.renderTreeLevel(node.children, depth + 1, rootDir);
+                    }
+                }
+                
+                return html;
+            }
+            
+            getFileIcon(type) {
+                const icons = {
+                    checkpoint: 'fas fa-cube',
+                    lora: 'fas fa-layer-group',
+                    embedding: 'fas fa-font',
+                    vae: 'fas fa-microchip'
+                };
+                return icons[type] || 'fas fa-file';
+            }
+            
+            toggleTreeFolder(treeItem) {
+                const folderName = treeItem.dataset.name;
+                const depth = parseInt(treeItem.dataset.depth);
+                const rootDir = treeItem.dataset.root;
+                
+                console.log('Toggling folder:', folderName, 'at depth:', depth, 'in root:', rootDir);
+                
+                // Get the correct tree for this root directory
+                const tree = this.directoryTrees.get(rootDir);
+                if (tree) {
+                    // Find and toggle the folder in the specific tree
+                    this.toggleFolderInTree(tree, folderName, 1, depth);
+                }
+                
+                // Re-render the tree
+                this.renderTree();
+            }
+            
+            toggleFolderInTree(treeLevel, targetName, currentDepth, targetDepth) {
+                if (currentDepth === targetDepth) {
+                    const node = treeLevel.get(targetName);
+                    if (node && node.type === 'folder') {
+                        node.expanded = !node.expanded;
+                        console.log('Toggled folder', targetName, 'to', node.expanded);
+                        return true;
+                    }
+                } else if (currentDepth < targetDepth) {
+                    for (const [name, node] of treeLevel) {
+                        if (node.type === 'folder' && node.children.size > 0) {
+                            if (this.toggleFolderInTree(node.children, targetName, currentDepth + 1, targetDepth)) {
+                                return true;
+                            }
+                        }
+                    }
+                }
+                return false;
+            }
+
+            updateFileCounter() {
+                const counter = document.getElementById('fileCounter');
+                const count = document.getElementById('fileCount');
+                const totalSize = document.getElementById('totalSize');
+                
+                if (this.filteredFiles.length > 0) {
+                    counter.classList.remove('hidden');
+                    count.textContent = this.filteredFiles.length;
+                    const total = this.filteredFiles.reduce((sum, file) => sum + file.size, 0);
+                    totalSize.textContent = this.formatFileSize(total);
+                } else {
+                    counter.classList.add('hidden');
+                }
+            }
+
+            renderGrid() {
+                const treeView = document.getElementById('treeView');
+                const grid = document.getElementById('fileGrid');
+                const list = document.getElementById('fileList');
+                const welcomeMessage = document.getElementById('welcomeMessage');
+                
+                if (this.files.length === 0) {
+                    treeView.classList.add('hidden');
+                    grid.classList.add('hidden');
+                    list.classList.add('hidden');
+                    welcomeMessage.classList.remove('hidden');
+                    return;
+                }
+                
+                welcomeMessage.classList.add('hidden');
+                treeView.classList.add('hidden');
+                grid.classList.remove('hidden');
+                list.classList.add('hidden');
+                
+                grid.innerHTML = this.filteredFiles.map(file => this.createFileCard(file)).join('');
+                
+                // Add click listeners
+                this.filteredFiles.forEach((file, index) => {
+                    const card = grid.children[index];
+                    card.addEventListener('click', () => this.showFileDetails(file));
+                });
+            }
+
+            renderList() {
+                const treeView = document.getElementById('treeView');
+                const grid = document.getElementById('fileGrid');
+                const list = document.getElementById('fileList');
+                const tbody = document.getElementById('fileTableBody');
+                const welcomeMessage = document.getElementById('welcomeMessage');
+                
+                if (this.files.length === 0) {
+                    treeView.classList.add('hidden');
+                    grid.classList.add('hidden');
+                    list.classList.add('hidden');
+                    welcomeMessage.classList.remove('hidden');
+                    return;
+                }
+                
+                welcomeMessage.classList.add('hidden');
+                treeView.classList.add('hidden');
+                grid.classList.add('hidden');
+                list.classList.remove('hidden');
+                
+                tbody.innerHTML = this.filteredFiles.map(file => this.createFileRow(file)).join('');
+                
+                // Add click listeners
+                this.filteredFiles.forEach((file, index) => {
+                    const row = tbody.children[index];
+                    row.addEventListener('click', () => this.showFileDetails(file));
+                    row.classList.add('cursor-pointer', 'table-row');
+                });
+            }
+
+            createFileCard(file) {
+                const typeColors = {
+                    checkpoint: 'bg-blue-500',
+                    lora: 'bg-green-500',
+                    embedding: 'bg-purple-500',
+                    vae: 'bg-orange-500'
+                };
+
+                const thumbnailContent = file.thumbnail 
+                    ? `<img src="${file.thumbnail}" alt="${file.name}" class="thumbnail rounded-t-lg">`
+                    : `<div class="thumbnail rounded-t-lg flex items-center justify-center">
+                         <i class="fas fa-cube text-white text-4xl"></i>
+                       </div>`;
+
+                return `
+                    <div class="file-card bg-white rounded-lg shadow-md overflow-hidden cursor-pointer">
+                        ${thumbnailContent}
+                        <div class="p-4">
+                            <h3 class="font-semibold text-gray-900 mb-2 truncate" title="${file.name}">${file.name}</h3>
+                            <div class="flex items-center justify-between mb-1">
+                                <span class="metadata-tag ${typeColors[file.type] || 'bg-gray-500'} text-white px-2 py-1 rounded text-xs uppercase">
+                                    ${file.type}
+                                </span>
+                                <span class="text-gray-500 text-sm">${this.formatFileSize(file.size)}</span>
+                            </div>
+                            ${file.metadata.description ? `<p class="text-gray-600 text-sm truncate">${file.metadata.description}</p>` : ''}
+                            ${file.metadata.ss_tag_frequency ? `<div class="mt-2 flex flex-wrap gap-1">${Object.keys(file.metadata.ss_tag_frequency).slice(0, 3).map(tag => `<span class="bg-gray-100 text-gray-700 px-2 py-1 rounded text-xs">${tag}</span>`).join('')}</div>` : ''}
+                        </div>
+                    </div>
+                `;
+            }
+
+            createFileRow(file) {
+                const thumbnailContent = file.thumbnail 
+                    ? `<img src="${file.thumbnail}" alt="${file.name}" class="w-12 h-12 object-cover rounded">`
+                    : `<div class="w-12 h-12 bg-gray-200 rounded flex items-center justify-center">
+                         <i class="fas fa-cube text-gray-400"></i>
+                       </div>`;
+
+                return `
+                    <tr>
+                        <td class="px-6 py-4 whitespace-nowrap">
+                            ${thumbnailContent}
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap">
+                            <div class="text-sm font-medium text-gray-900">${file.name}</div>
+                            <div class="text-sm text-gray-500">${file.path}</div>
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap">
+                            <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-${file.type === 'checkpoint' ? 'blue' : file.type === 'lora' ? 'green' : file.type === 'embedding' ? 'purple' : 'orange'}-100 text-${file.type === 'checkpoint' ? 'blue' : file.type === 'lora' ? 'green' : file.type === 'embedding' ? 'purple' : 'orange'}-800">
+                                ${file.type}
+                            </span>
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                            ${this.formatFileSize(file.size)}
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                            ${new Date(file.lastModified).toLocaleDateString()}
+                        </td>
+                    </tr>
+                `;
+            }
+
+            showFileDetails(file) {
+                const modal = document.getElementById('fileModal');
+                const title = document.getElementById('modalTitle');
+                const content = document.getElementById('modalContent');
+                
+                title.textContent = file.name;
+                
+                const thumbnailSection = file.thumbnail 
+                    ? `<div class="mb-6">
+                         <img src="${file.thumbnail}" alt="${file.name}" class="max-w-full h-64 object-contain rounded-lg mx-auto">
+                       </div>`
+                    : '';
+
+                const metadataSection = Object.keys(file.metadata).length > 0
+                    ? `<div class="mb-6">
+                         <h3 class="text-lg font-semibold mb-3">Metadata</h3>
+                         <div class="bg-gray-50 rounded-lg p-4 max-h-96 overflow-y-auto">
+                           <pre class="text-sm text-gray-700 whitespace-pre-wrap">${JSON.stringify(file.metadata, null, 2)}</pre>
+                         </div>
+                       </div>`
+                    : '';
+
+                content.innerHTML = `
+                    ${thumbnailSection}
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+                        <div>
+                            <h3 class="text-lg font-semibold mb-3">File Information</h3>
+                            <dl class="space-y-2">
+                                <div><dt class="font-medium text-gray-700">Name:</dt><dd class="text-gray-900">${file.name}</dd></div>
+                                <div><dt class="font-medium text-gray-700">Type:</dt><dd class="text-gray-900">${file.type}</dd></div>
+                                <div><dt class="font-medium text-gray-700">Size:</dt><dd class="text-gray-900">${this.formatFileSize(file.size)}</dd></div>
+                                <div><dt class="font-medium text-gray-700">Modified:</dt><dd class="text-gray-900">${new Date(file.lastModified).toLocaleString()}</dd></div>
+                                <div><dt class="font-medium text-gray-700">Path:</dt><dd class="text-gray-900">${file.path}</dd></div>
+                            </dl>
+                        </div>
+                        <div>
+                            <h3 class="text-lg font-semibold mb-3">Quick Info</h3>
+                            <dl class="space-y-2">
+                                ${file.metadata.modelspec ? `<div><dt class="font-medium text-gray-700">Model Spec:</dt><dd class="text-gray-900">${file.metadata.modelspec.title || 'N/A'}</dd></div>` : ''}
+                                ${file.metadata.sd_version ? `<div><dt class="font-medium text-gray-700">SD Version:</dt><dd class="text-gray-900">${file.metadata.sd_version}</dd></div>` : ''}
+                                ${file.metadata.base_model ? `<div><dt class="font-medium text-gray-700">Base Model:</dt><dd class="text-gray-900">${file.metadata.base_model}</dd></div>` : ''}
+                                ${file.metadata.ss_network_module ? `<div><dt class="font-medium text-gray-700">Network:</dt><dd class="text-gray-900">${file.metadata.ss_network_module}</dd></div>` : ''}
+                                ${file.metadata.ss_network_dim ? `<div><dt class="font-medium text-gray-700">Dimension:</dt><dd class="text-gray-900">${file.metadata.ss_network_dim}</dd></div>` : ''}
+                            </dl>
+                        </div>
+                    </div>
+                    ${metadataSection}
+                `;
+                
+                modal.classList.remove('hidden');
+            }
+
+            closeModal() {
+                document.getElementById('fileModal').classList.add('hidden');
+            }
+
+            changeView(view) {
+                this.currentView = view;
+                this.updateDisplay();
+            }
+
+            filterFiles(searchTerm) {
+                const term = searchTerm.toLowerCase();
+                this.filteredFiles = this.files.filter(file => 
+                    file.name.toLowerCase().includes(term) ||
+                    file.type.toLowerCase().includes(term) ||
+                    (file.metadata.description && file.metadata.description.toLowerCase().includes(term))
+                );
+                this.updateDisplay();
+            }
+
+            filterByType(type) {
+                if (type === 'all') {
+                    this.filteredFiles = [...this.files];
+                } else {
+                    this.filteredFiles = this.files.filter(file => file.type === type);
+                }
+                this.updateDisplay();
+            }
+
+            sortFiles(criteria) {
+                this.filteredFiles.sort((a, b) => {
+                    switch (criteria) {
+                        case 'name':
+                            return a.name.localeCompare(b.name);
+                        case 'size':
+                            return b.size - a.size;
+                        case 'date':
+                            return b.lastModified - a.lastModified;
+                        case 'type':
+                            return a.type.localeCompare(b.type);
+                        default:
+                            return 0;
+                    }
+                });
+                this.updateDisplay();
+            }
+
+            showLoading(show) {
+                const loading = document.getElementById('loadingIndicator');
+                const welcomeMessage = document.getElementById('welcomeMessage');
+                
+                if (show) {
+                    loading.classList.remove('hidden');
+                    welcomeMessage.classList.add('hidden');
+                } else {
+                    loading.classList.add('hidden');
+                    if (this.files.length === 0) {
+                        welcomeMessage.classList.remove('hidden');
+                    }
+                }
+            }
+        }
+
+        // Initialize the browser when the page loads
+        document.addEventListener('DOMContentLoaded', () => {
+            new ModelGalleryBrowser();
+        });
+    </script>
+</body>
+</html>
