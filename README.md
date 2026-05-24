@@ -2,6 +2,16 @@
 
 A standalone web-based gallery for managing and browsing Stable Diffusion models (checkpoints, LoRAs, etc.) with a familiar interface inspired by A1111's model viewer.
 
+## Screenshots
+
+**Gallery view** — folder tree on the left, card grid with frosted-glass footers, per-card globe and folder-open icons:
+
+![Gallery view](screenshot_1.png)
+
+**Model detail modal** — preview on the left, metadata form on the right with colour-coded prompt fields and a side-by-side checkpoint-settings panel:
+
+![Model detail modal](screenshot_2.png)
+
 ## Features
 
 ### Backend (Python)
@@ -187,11 +197,3 @@ chmod +x start_server.sh
 - Verify the Model Root path is correct
 - Ensure folder names are in the Folder Whitelist
 - Check that files have valid extensions (`.ckpt`, `.safetensors`, etc.)
-
-## License
-
-This project is provided as-is for personal use.
-
-## Credits
-
-Inspired by the AUTOMATIC1111 Stable Diffusion WebUI's checkpoint and LoRA browser interface.
